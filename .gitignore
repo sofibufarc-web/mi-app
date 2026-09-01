@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# .env* de arriba también taparía la plantilla; la queremos versionada.
+!.env.example
+
+# Imágenes subidas desde el panel: son datos, no código.
+/public/uploads/*
+!/public/uploads/.gitkeep

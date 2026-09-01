@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tienda Wiedmer
 
-## Getting Started
+E-commerce para **Wiedmer**, distribuidor mayorista de artículos de pinturería y
+ferretería (Rosario). Catálogo público con carrito, panel de administración y
+checkout que envía el pedido por **WhatsApp**. No procesa pagos.
 
-First, run the development server:
+> La documentación completa del proyecto —guía de estilo, arquitectura, modelo
+> de datos, decisiones— está en [`CLAUDE.md`](./CLAUDE.md).
 
-```bash
+## Requisitos
+
+- Node.js 20 o superior (probado con 24)
+- npm
+
+## Arrancar
+
+```sh
+npm install
+cp .env.example .env.local   # completá las credenciales del panel
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrí http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+El **catálogo funciona sin `.env.local`**. Lo único que lo necesita es el panel
+de administración.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Panel de administración
 
-## Learn More
+http://localhost:3000/login
 
-To learn more about Next.js, take a look at the following resources:
+Las credenciales **no están en el código**: se definen en `.env.local`, que git
+ignora. Elegí las que quieras:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sh
+ADMIN_USER=wiedmer
+ADMIN_PASSWORD=una-contraseña-tuya
+SESSION_SECRET=              # openssl rand -hex 32
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Si falta alguna de las tres, el login rechaza cualquier intento (no queda el
+panel abierto por accidente). En Vercel se cargan en *Project Settings →
+Environment Variables*.
 
-## Deploy on Vercel
+> **Por qué no van en el código:** este repositorio es público. Una contraseña
+> escrita en un archivo `.ts` queda visible para cualquiera y, aunque después la
+> borres, **sigue estando en el historial de git**. Por eso viven fuera del repo.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Desde el panel se puede:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Productos** — listar, buscar, filtrar, crear, editar, borrar y subir imágenes.
+- **Categorías** — ABM con slug automático y reasignación de productos al borrar.
+- **Lista de precios** — subir un `.xlsx`/`.csv`, revisar la previsualización y
+  aplicar la actualización masiva.
+- **Configuración** — nombre, WhatsApp, textos y datos de contacto.
+
+## Scripts
+
+| Comando | Qué hace |
+| --- | --- |
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` | Build de producción |
+| `npm run start` | Sirve el build |
+| `npm run lint` | ESLint |
+| `node scripts/generar-plantilla.mjs` | Regenera `public/plantilla-precios.xlsx` |
+| `node scripts/generar-imagenes-categorias.mjs` | Regenera los SVG de categorías |
+
+## Estructura rápida
+
+```
+src/
+  config/site.ts     Credenciales y flags (no se editan desde el panel)
+  data/              types.ts + los .json con productos, categorías y config
+  lib/data-source.ts ★ Única capa de acceso a datos. Acá se migra a Supabase.
+  lib/excel.ts       Parseo del Excel de precios
+  proxy.ts           Protege /admin y /api/admin (el "middleware" de Next 16)
+  app/(tienda)/      Catálogo público, carrito y checkout
+  app/admin/         Panel
+  app/api/admin/     Endpoints del panel (uploads, precios)
+```
+
+## Datos
+
+No hay base de datos. Todo vive en archivos JSON dentro de `src/data/`, y se lee
+y escribe **únicamente** desde `src/lib/data-source.ts`. Ese archivo tiene
+comentarios `// TODO(supabase):` en cada función con el reemplazo concreto para
+la migración.
+
+## Deploy en Vercel
+
+1. Subí el repo a GitHub.
+2. En Vercel: *New Project* → importá el repo → *Deploy*. Se detecta Next.js
+   solo y no hay variables de entorno obligatorias.
+
+> ⚠️ **Limitación conocida:** el panel escribe en el sistema de archivos, que en
+> Vercel es efímero. El catálogo se ve perfecto, pero los cambios hechos desde
+> `/admin` en producción no persisten. Se resuelve al migrar a Supabase (ver
+> `CLAUDE.md`, sección 9).
+
+## Pendientes
+
+Ver la sección "Pendientes / próximos pasos" de `CLAUDE.md`.

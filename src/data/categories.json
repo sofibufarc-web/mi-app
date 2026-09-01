@@ -1,0 +1,50 @@
+[
+  {
+    "id": "c-001",
+    "name": "Pinturas",
+    "slug": "pinturas",
+    "description": "Látex, esmaltes sintéticos, hidroesmaltes, enduidos y fijadores para interior y exterior.",
+    "image": "/img/categorias/pinturas.svg",
+    "order": 1
+  },
+  {
+    "id": "c-002",
+    "name": "Aerosoles",
+    "slug": "aerosoles",
+    "description": "Esmaltes, antióxidos e imprimaciones en aerosol para retoques y trabajos chicos.",
+    "image": "/img/categorias/aerosoles.svg",
+    "order": 2
+  },
+  {
+    "id": "c-003",
+    "name": "Rodillos y Pinceles",
+    "slug": "rodillos-y-pinceles",
+    "description": "Rodillos de lana y poliéster, mini rodillos, pinceles, pinceletas, bandejas y extensores.",
+    "image": "/img/categorias/rodillos-y-pinceles.svg",
+    "order": 3
+  },
+  {
+    "id": "c-004",
+    "name": "Lijado y Espatulado",
+    "slug": "lijado-y-espatulado",
+    "description": "Lijas al agua y para madera, espátulas, llanas, rasquetas y lijadoras manuales.",
+    "image": "/img/categorias/lijado-y-espatulado.svg",
+    "order": 4
+  },
+  {
+    "id": "c-005",
+    "name": "Limpieza y Protección",
+    "slug": "limpieza-y-proteccion",
+    "description": "Guantes, cobertores, cintas de enmascarar, trapos y paños para pulir.",
+    "image": "/img/categorias/limpieza-y-proteccion.svg",
+    "order": 5
+  },
+  {
+    "id": "c-006",
+    "name": "Impermeabilizantes",
+    "slug": "impermeabilizantes",
+    "description": "Membranas líquidas y en pasta, vendas de poliéster y mantas asfálticas.",
+    "image": "/img/categorias/impermeabilizantes.svg",
+    "order": 6
+  }
+]

@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 se configura desde el CSS, no desde tailwind.config.js.
+ * Todo lo que declaramos dentro de `@theme` se convierte en utilidades:
+ *   --color-brand  →  bg-brand, text-brand, border-brand…
+ *   --font-sans    →  font-sans
+ *
+ * Los colores salen del CSS real de wiedmer.com.ar (ver CLAUDE.md, sección 2).
+ */
+@theme {
+  --color-brand: #113bc2;
+  --color-brand-dark: #0d2d94;
+  --color-brand-darker: #07184d;
+  --color-brand-soft: #eef2ff;
+
+  --color-ink: #191919;
+  --color-ink-soft: #5a6475;
+  --color-line: #e8e8e8;
+  --color-surface: #f7f8fa;
+
+  --font-sans: var(--font-libre-franklin), system-ui, -apple-system, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* La tienda es de fondo claro. Se lo decimos al navegador para que no
+     invierta los colores de los controles nativos en modo oscuro. */
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Anillo de foco visible y consistente: importa para accesibilidad. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Oculta las flechitas de los <input type="number"> del panel. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@utility container-wiedmer {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem; /* 1280px */
+  padding-inline: 1rem;
 }

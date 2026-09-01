@@ -1,0 +1,18 @@
+{
+  "storeName": "Wiedmer",
+  "logoText": "WIEDMER",
+  "whatsappNumber": "5493416756969",
+  "welcomeTitle": "Distribuidor mayorista de pinturería y ferretería",
+  "welcomeText": "Importamos y distribuimos artículos para pinturerías y ferreterías desde Rosario. Entregamos en Gran Rosario, Santa Fe, norte de Buenos Aires, Entre Ríos, Córdoba y La Pampa.",
+  "contact": {
+    "address": "Almafuerte 645, Rosario, Santa Fe",
+    "phone": "(0341) 430-5931",
+    "email": "ventas@wiedmer.com.ar",
+    "hours": "Lunes a viernes de 8 a 17 h"
+  },
+  "colors": {
+    "brand": "#113bc2",
+    "brandDark": "#0d2d94",
+    "brandDarker": "#07184d"
+  }
+}
