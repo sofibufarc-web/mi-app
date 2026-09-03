@@ -78,7 +78,7 @@ export function ImageUploader({ initial }: { initial: string[] }) {
       <input type="hidden" name="images" value={JSON.stringify(images)} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md border border-line bg-white px-4 py-2 text-sm font-medium transition hover:bg-surface">
+        <label className="cursor-pointer rounded-md border border-line bg-card px-4 py-2 text-sm font-medium transition hover:bg-surface">
           {uploading ? "Subiendo…" : "Elegir imágenes"}
           <input
             ref={inputRef}
@@ -96,7 +96,7 @@ export function ImageUploader({ initial }: { initial: string[] }) {
       </div>
 
       {error && (
-        <p role="alert" className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -106,7 +106,7 @@ export function ImageUploader({ initial }: { initial: string[] }) {
           {images.map((image, index) => (
             <li
               key={image}
-              className={`overflow-hidden rounded-lg border bg-white ${
+              className={`overflow-hidden rounded-lg border bg-card ${
                 index === 0 ? "border-brand ring-1 ring-brand" : "border-line"
               }`}
             >
@@ -119,7 +119,7 @@ export function ImageUploader({ initial }: { initial: string[] }) {
                   className="object-contain p-2"
                 />
                 {index === 0 && (
-                  <span className="absolute left-1 top-1 rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="absolute left-1 top-1 rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-on-brand">
                     Principal
                   </span>
                 )}
@@ -161,7 +161,7 @@ export function ImageUploader({ initial }: { initial: string[] }) {
                     type="button"
                     onClick={() => remove(index)}
                     aria-label="Quitar imagen"
-                    className="h-7 w-7 rounded text-ink-soft transition hover:bg-red-50 hover:text-red-600"
+                    className="h-7 w-7 rounded text-ink-soft transition hover:bg-red-500/10 hover:text-red-500"
                   >
                     ✕
                   </button>

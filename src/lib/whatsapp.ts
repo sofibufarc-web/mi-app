@@ -48,6 +48,25 @@ export function buildOrderMessage(params: {
 }
 
 /**
+ * Mensaje para consultar el precio de UN producto.
+ *
+ * Lo usa el visitante que todavía no inició sesión: no ve los precios, pero
+ * puede preguntar por uno concreto sin tener que copiar el código a mano.
+ *
+ * `intro` viene traducido desde el diccionario (`t.gate.inquiryMessage`), así
+ * que la consulta le llega al vendedor en el idioma en el que el cliente
+ * estaba navegando.
+ */
+export function buildInquiryMessage(params: {
+  intro: string;
+  productName: string;
+  sku: string;
+}): string {
+  const { intro, productName, sku } = params;
+  return `${intro}\n\n*${productName}*\nCód. ${sku}`;
+}
+
+/**
  * Deja el número como lo quiere wa.me: solo dígitos, con código de país.
  * "+54 9 341 675-6969" → "5493416756969"
  */

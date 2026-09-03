@@ -17,7 +17,7 @@ import type { Category, Product } from "@/data/types";
  */
 
 const inputClass =
-  "h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand";
+  "h-11 w-full rounded-md border border-line bg-card px-3 text-sm outline-none focus:border-brand";
 const labelClass = "text-xs font-semibold text-ink-soft";
 
 function SubmitButton({ editing }: { editing: boolean }) {
@@ -26,7 +26,7 @@ function SubmitButton({ editing }: { editing: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+      className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-60"
     >
       {pending ? "Guardando…" : editing ? "Guardar cambios" : "Crear producto"}
     </button>
@@ -49,7 +49,7 @@ export function ProductForm({
     <form action={formAction} className="space-y-6">
       {product && <input type="hidden" name="id" value={product.id} />}
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">Datos básicos</h2>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -146,7 +146,7 @@ export function ProductForm({
               placeholder={
                 "Un párrafo por bloque.\n\nDejá una línea en blanco entre párrafos: así se muestran separados en la ficha del producto."
               }
-              className="w-full rounded-md border border-line bg-white p-3 text-sm leading-relaxed outline-none focus:border-brand"
+              className="w-full rounded-md border border-line bg-card p-3 text-sm leading-relaxed outline-none focus:border-brand"
             />
           </label>
         </div>
@@ -174,7 +174,7 @@ export function ProductForm({
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">Imágenes</h2>
         <p className="mt-1 mb-4 text-sm text-ink-soft">
           La primera es la principal: es la que se ve en la grilla del catálogo.
@@ -183,7 +183,7 @@ export function ProductForm({
       </section>
 
       {state.error && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
       )}
@@ -192,7 +192,7 @@ export function ProductForm({
         <SubmitButton editing={Boolean(product)} />
         <Link
           href="/admin/productos"
-          className="flex h-11 items-center rounded-md border border-line bg-white px-6 text-sm font-medium transition hover:bg-surface"
+          className="flex h-11 items-center rounded-md border border-line bg-card px-6 text-sm font-medium transition hover:bg-surface"
         >
           Cancelar
         </Link>

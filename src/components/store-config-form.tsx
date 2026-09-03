@@ -10,7 +10,7 @@ import type { StoreConfig } from "@/data/types";
 /** Formulario de configuración general de la tienda. */
 
 const inputClass =
-  "h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand";
+  "h-11 w-full rounded-md border border-line bg-card px-3 text-sm outline-none focus:border-brand";
 const labelClass = "text-xs font-semibold text-ink-soft";
 
 function SubmitButton() {
@@ -19,7 +19,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+      className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-60"
     >
       {pending ? "Guardando…" : "Guardar configuración"}
     </button>
@@ -39,7 +39,7 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
 
   return (
     <form action={formAction} className="space-y-6">
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">Identidad</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
@@ -52,31 +52,25 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className={labelClass}>Texto del logo</span>
-            <input
-              name="logoText"
-              defaultValue={config.logoText}
-              className={inputClass}
-            />
-            <span className="text-[11px] text-ink-soft">
-              El logo es texto, como en el sitio original. Se muestra en mayúsculas.
-            </span>
-          </label>
-
-          <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className={labelClass}>Logo como imagen (path, opcional)</span>
-            <input
-              name="logoImage"
-              defaultValue={config.logoImage ?? ""}
-              placeholder="/uploads/logo.png"
-              className={inputClass}
-            />
-          </label>
+          {/*
+            El logo ya NO se edita desde acá: es el isotipo oficial de la
+            empresa, dibujado como SVG en `src/components/wiedmer-logo.tsx`.
+            Se cambia en el código, no desde el panel, porque es identidad de
+            marca y no configuración de tienda. Los campos `logoText` y
+            `logoImage` siguen existiendo en el JSON (los guarda la acción del
+            panel con el nombre de la tienda) por si algún día se vuelve atrás.
+          */}
+          <div className="flex flex-col gap-1">
+            <span className={labelClass}>Logo</span>
+            <p className="rounded-md border border-line bg-surface px-3 py-2.5 text-xs leading-relaxed text-ink-soft">
+              El logo es el isotipo de Wiedmer en SVG. Se adapta solo al modo
+              día y al modo noche, así que no hay nada que configurar acá.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">
           Pedidos por WhatsApp
         </h2>
@@ -98,7 +92,7 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">
           Textos de la portada
         </h2>
@@ -118,13 +112,13 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
               name="welcomeText"
               rows={3}
               defaultValue={config.welcomeText}
-              className="w-full rounded-md border border-line bg-white p-3 text-sm leading-relaxed outline-none focus:border-brand"
+              className="w-full rounded-md border border-line bg-card p-3 text-sm leading-relaxed outline-none focus:border-brand"
             />
           </label>
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">Contacto</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
@@ -163,7 +157,7 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">Colores</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Se guardan acá como referencia de marca. Para que cambien visualmente
@@ -199,7 +193,7 @@ export function StoreConfigForm({ config }: { config: StoreConfig }) {
       </section>
 
       {state.error && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
       )}

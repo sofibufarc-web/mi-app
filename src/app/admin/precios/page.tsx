@@ -15,7 +15,7 @@ export default function AdminPreciosPage() {
 
       <PriceListUploader />
 
-      <section className="rounded-lg border border-line bg-white p-5">
+      <section className="rounded-lg border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">
           Cómo tiene que estar armado el archivo
         </h2>

@@ -23,7 +23,7 @@ type CategoryWithCount = Category & { productCount: number };
 type OpenState = { id: string; mode: "edit" | "delete" } | null;
 
 const inputClass =
-  "h-10 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand";
+  "h-10 w-full rounded-md border border-line bg-card px-3 text-sm outline-none focus:border-brand";
 const labelClass = "text-xs font-semibold text-ink-soft";
 
 function SubmitButton({ label }: { label: string }) {
@@ -32,7 +32,7 @@ function SubmitButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="h-10 rounded-md bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+      className="h-10 rounded-md bg-brand px-5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-60"
     >
       {pending ? "Guardando…" : label}
     </button>
@@ -101,13 +101,13 @@ function CategoryFields({
         <input
           name="image"
           defaultValue={category?.image ?? ""}
-          placeholder="/img/categorias/impermeabilizantes.svg"
+          placeholder="/img/categorias/impermeabilizantes.webp"
           className={inputClass}
         />
       </label>
 
       {state.error && (
-        <p role="alert" className="sm:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="sm:col-span-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
       )}
@@ -123,7 +123,7 @@ function CategoryFields({
           <button
             type="button"
             onClick={onCancel}
-            className="h-10 rounded-md border border-line bg-white px-5 text-sm font-medium transition hover:bg-surface"
+            className="h-10 rounded-md border border-line bg-card px-5 text-sm font-medium transition hover:bg-surface"
           >
             Cancelar
           </button>
@@ -191,7 +191,7 @@ function DeletePanel({
       )}
 
       {state.error && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
       )}
@@ -211,7 +211,7 @@ function DeletePanel({
         <button
           type="button"
           onClick={onCancel}
-          className="h-10 rounded-md border border-line bg-white px-5 text-sm font-medium transition hover:bg-surface"
+          className="h-10 rounded-md border border-line bg-card px-5 text-sm font-medium transition hover:bg-surface"
         >
           Cancelar
         </button>
@@ -230,7 +230,7 @@ export function CategoryManager({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-line bg-white p-5">
+      <div className="rounded-lg border border-line bg-card p-5">
         {creating ? (
           <>
             <h2 className="mb-4 text-sm font-bold uppercase tracking-wide">
@@ -242,14 +242,14 @@ export function CategoryManager({
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+            className="rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
           >
             + Nueva categoría
           </button>
         )}
       </div>
 
-      <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-white">
+      <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-card">
         {categories.map((category) => {
           const isEditing = open?.id === category.id && open.mode === "edit";
           const isDeleting = open?.id === category.id && open.mode === "delete";
@@ -297,7 +297,7 @@ export function CategoryManager({
               )}
 
               {isDeleting && (
-                <div className="mt-4 rounded-md border border-red-200 bg-red-50/50 p-4">
+                <div className="mt-4 rounded-md border border-red-500/30 bg-red-500/5 p-4">
                   <DeletePanel
                     category={category}
                     categories={categories}

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "video": "remotion studio remotion/index.ts",
+    "video:render": "remotion render remotion/index.ts HeroPintura public/video/hero-pintura.mp4",
+    "video:poster": "remotion still remotion/index.ts HeroPintura public/video/hero-pintura.jpg --frame=0 --image-format=jpeg --jpeg-quality=80"
   },
   "dependencies": {
     "next": "16.3.4",
@@ -16,12 +19,14 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.520",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "remotion": "^4.0.520",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

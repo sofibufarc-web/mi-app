@@ -8,7 +8,7 @@ export const metadata = { title: "Panel" };
 /** Tarjeta de número grande del dashboard. */
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-5">
+    <div className="rounded-lg border border-line bg-card p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
         {label}
       </p>
@@ -58,7 +58,7 @@ export default async function AdminHomePage() {
       </div>
 
       {(withoutCategory.length > 0 || outOfStock.length > 0) && (
-        <section className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+        <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-5">
           <h2 className="text-sm font-bold">Cosas para revisar</h2>
           <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {withoutCategory.length > 0 && (
@@ -102,7 +102,7 @@ export default async function AdminHomePage() {
             <Link
               key={card.href}
               href={card.href}
-              className="rounded-lg border border-line bg-white p-5 transition hover:border-brand/40 hover:shadow-sm"
+              className="rounded-lg border border-line bg-card p-5 transition hover:border-brand/40 hover:shadow-sm"
             >
               <p className="font-semibold">{card.title}</p>
               <p className="mt-1 text-sm text-ink-soft">{card.text}</p>
@@ -115,7 +115,7 @@ export default async function AdminHomePage() {
         <h2 className="text-sm font-bold uppercase tracking-wide">
           Productos por categoría
         </h2>
-        <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-white">
+        <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-card">
           {categories.map((category) => (
             <li key={category.id} className="flex items-center justify-between p-4">
               <Link

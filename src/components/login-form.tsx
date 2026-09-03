@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { loginAction, type LoginState } from "@/app/actions/auth";
+import type { Dictionary } from "@/lib/i18n";
 
 /**
  * `useActionState` conecta el <form> con una Server Action y guarda lo que la
@@ -13,58 +14,66 @@ import { loginAction, type LoginState } from "@/app/actions/auth";
  * formulario se está enviando para deshabilitar el botón. Por eso el botón es
  * un componente aparte.
  */
-function SubmitButton() {
+function SubmitButton({ t }: { t: Dictionary }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
       disabled={pending}
-      className="h-11 w-full rounded-md bg-brand text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+      className="h-11 w-full rounded-md bg-brand text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-60"
     >
-      {pending ? "Ingresando…" : "Ingresar"}
+      {pending ? t.login.submitting : t.login.submit}
     </button>
   );
 }
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
   const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {
     error: null,
   });
+
+  const fieldClass =
+    "h-11 rounded-md border border-line bg-card px-3 text-sm text-ink outline-none transition focus:border-brand";
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="next" value={next} />
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-ink-soft">Usuario</span>
+        <span className="text-xs font-semibold text-ink-soft">{t.login.user}</span>
         <input
           name="user"
           required
           autoComplete="username"
           autoFocus
-          className="h-11 rounded-md border border-line px-3 text-sm outline-none focus:border-brand"
+          className={fieldClass}
         />
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-ink-soft">Contraseña</span>
+        <span className="text-xs font-semibold text-ink-soft">
+          {t.login.password}
+        </span>
         <input
           name="password"
           type="password"
           required
           autoComplete="current-password"
-          className="h-11 rounded-md border border-line px-3 text-sm outline-none focus:border-brand"
+          className={fieldClass}
         />
       </label>
 
       {state.error && (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="animate-fade-up rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400"
+        >
           {state.error}
         </p>
       )}
 
-      <SubmitButton />
+      <SubmitButton t={t} />
     </form>
   );
 }

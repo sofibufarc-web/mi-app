@@ -20,7 +20,7 @@ import { formatPrice } from "@/lib/format";
 
 type Step = "upload" | "preview" | "done";
 
-const cardClass = "rounded-lg border border-line bg-white p-5";
+const cardClass = "rounded-lg border border-line bg-card p-5";
 
 function SectionTitle({ children, count }: { children: string; count: number }) {
   return (
@@ -146,7 +146,7 @@ export function PriceListUploader() {
         <button
           type="button"
           onClick={reset}
-          className="mt-5 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          className="mt-5 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
         >
           Subir otra lista
         </button>
@@ -187,7 +187,7 @@ export function PriceListUploader() {
         </div>
 
         {preview.errors.length > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-5">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-5">
             <SectionTitle count={preview.errors.length}>
               Filas que vamos a saltear
             </SectionTitle>
@@ -209,7 +209,7 @@ export function PriceListUploader() {
             </SectionTitle>
             <div className="mt-3 max-h-96 overflow-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-ink-soft">
+                <thead className="sticky top-0 bg-card text-left text-xs uppercase tracking-wide text-ink-soft">
                   <tr className="border-b border-line">
                     <th className="py-2 pr-3 font-semibold">Código</th>
                     <th className="py-2 pr-3 font-semibold">Producto</th>
@@ -269,7 +269,7 @@ export function PriceListUploader() {
 
             <div className="mt-3 max-h-72 overflow-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-ink-soft">
+                <thead className="sticky top-0 bg-card text-left text-xs uppercase tracking-wide text-ink-soft">
                   <tr className="border-b border-line">
                     <th className="py-2 pr-3 font-semibold">Código</th>
                     <th className="py-2 pr-3 font-semibold">Nombre</th>
@@ -312,7 +312,7 @@ export function PriceListUploader() {
         )}
 
         {error && (
-          <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}
@@ -322,7 +322,7 @@ export function PriceListUploader() {
             type="button"
             onClick={handleApply}
             disabled={busy || nothingToDo}
-            className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+            className="h-11 rounded-md bg-brand px-6 text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-50"
           >
             {busy
               ? "Aplicando…"
@@ -334,7 +334,7 @@ export function PriceListUploader() {
             type="button"
             onClick={reset}
             disabled={busy}
-            className="h-11 rounded-md border border-line bg-white px-6 text-sm font-medium transition hover:bg-surface"
+            className="h-11 rounded-md border border-line bg-card px-6 text-sm font-medium transition hover:bg-surface"
           >
             Cancelar
           </button>
@@ -353,7 +353,7 @@ export function PriceListUploader() {
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark">
+        <label className="cursor-pointer rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark">
           {busy ? "Leyendo archivo…" : "Elegir archivo .xlsx / .csv"}
           <input
             ref={inputRef}
@@ -375,7 +375,7 @@ export function PriceListUploader() {
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       )}

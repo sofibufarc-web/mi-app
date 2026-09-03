@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useCart } from "@/components/use-cart";
 import type { Customer } from "@/data/types";
 import { formatPrice } from "@/lib/format";
+import type { Dictionary } from "@/lib/i18n";
 import { buildOrderMessage, buildWhatsappUrl } from "@/lib/whatsapp";
 
 /**
@@ -24,9 +25,11 @@ import { buildOrderMessage, buildWhatsappUrl } from "@/lib/whatsapp";
 export function CheckoutForm({
   storeName,
   whatsappNumber,
+  t,
 }: {
   storeName: string;
   whatsappNumber: string;
+  t: Dictionary;
 }) {
   const router = useRouter();
   const { items, totalPrice, totalItems, ready, clear } = useCart();
@@ -48,11 +51,11 @@ export function CheckoutForm({
     setError(null);
 
     if (!customer.name.trim()) {
-      setError("Necesitamos tu nombre para identificar el pedido.");
+      setError(t.checkout.errorName);
       return;
     }
     if (items.length === 0) {
-      setError("El carrito está vacío.");
+      setError(t.checkout.errorEmpty);
       return;
     }
 
@@ -74,19 +77,22 @@ export function CheckoutForm({
     router.push("/checkout/enviado");
   }
 
+  const fieldClass =
+    "h-11 rounded-md border border-line bg-card px-3 text-sm text-ink outline-none transition focus:border-brand";
+
   if (!ready) {
-    return <div className="h-64 animate-pulse rounded-lg bg-surface" />;
+    return <div className="h-64 animate-pulse rounded-xl bg-surface" />;
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-line bg-surface p-10 text-center">
-        <p className="font-semibold">No hay nada para pedir todavía</p>
+      <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
+        <p className="font-semibold">{t.checkout.nothingYet}</p>
         <Link
           href="/"
-          className="mt-5 inline-block rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          className="mt-5 inline-block rounded-md bg-brand px-6 py-3 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
         >
-          Ver catálogo
+          {t.common.viewCatalog}
         </Link>
       </div>
     );
@@ -97,59 +103,61 @@ export function CheckoutForm({
       onSubmit={handleSubmit}
       className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start"
     >
-      <div className="rounded-lg border border-line p-5">
-        <h2 className="text-sm font-bold uppercase tracking-wide">Tus datos</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Con esto armamos el pedido y te contactamos por WhatsApp para cerrarlo.
-        </p>
+      <div className="rounded-xl border border-line bg-card p-5">
+        <h2 className="text-sm font-bold uppercase tracking-wide">
+          {t.checkout.yourData}
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">{t.checkout.dataHint}</p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-semibold text-ink-soft">
-              Nombre o razón social *
+              {t.checkout.name}
             </span>
             <input
               required
               value={customer.name}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="Pinturería San Martín"
-              className="h-11 rounded-md border border-line px-3 text-sm outline-none focus:border-brand"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-ink-soft">Email</span>
-            <input
-              type="email"
-              value={customer.email}
-              onChange={(e) => updateField("email", e.target.value)}
-              placeholder="compras@ejemplo.com"
-              className="h-11 rounded-md border border-line px-3 text-sm outline-none focus:border-brand"
+              placeholder={t.checkout.namePlaceholder}
+              className={fieldClass}
             />
           </label>
 
           <label className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-ink-soft">
-              Dirección de entrega
+              {t.checkout.email}
+            </span>
+            <input
+              type="email"
+              value={customer.email}
+              onChange={(e) => updateField("email", e.target.value)}
+              placeholder={t.checkout.emailPlaceholder}
+              className={fieldClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-ink-soft">
+              {t.checkout.address}
             </span>
             <input
               value={customer.address}
               onChange={(e) => updateField("address", e.target.value)}
-              placeholder="San Martín 1234, Rosario"
-              className="h-11 rounded-md border border-line px-3 text-sm outline-none focus:border-brand"
+              placeholder={t.checkout.addressPlaceholder}
+              className={fieldClass}
             />
           </label>
 
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-semibold text-ink-soft">
-              Nota para el pedido
+              {t.checkout.note}
             </span>
             <textarea
               rows={3}
               value={customer.note}
               onChange={(e) => updateField("note", e.target.value)}
-              placeholder="Horario de entrega, forma de pago, aclaraciones…"
-              className="rounded-md border border-line p-3 text-sm outline-none focus:border-brand"
+              placeholder={t.checkout.notePlaceholder}
+              className="rounded-md border border-line bg-card p-3 text-sm text-ink outline-none transition focus:border-brand"
             />
           </label>
         </div>
@@ -157,15 +165,17 @@ export function CheckoutForm({
         {error && (
           <p
             role="alert"
-            className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700"
+            className="animate-fade-up mt-4 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400"
           >
             {error}
           </p>
         )}
       </div>
 
-      <aside className="rounded-lg border border-line bg-surface p-5 lg:sticky lg:top-40">
-        <h2 className="text-sm font-bold uppercase tracking-wide">Tu pedido</h2>
+      <aside className="rounded-xl border border-line bg-surface p-5 lg:sticky lg:top-40">
+        <h2 className="text-sm font-bold uppercase tracking-wide">
+          {t.checkout.yourOrder}
+        </h2>
 
         <ul className="mt-4 space-y-2 text-sm">
           {items.map((item) => (
@@ -182,7 +192,9 @@ export function CheckoutForm({
         </ul>
 
         <div className="mt-4 flex justify-between border-t border-line pt-4">
-          <span className="font-bold">Total ({totalItems})</span>
+          <span className="font-bold">
+            {t.cart.total} ({totalItems})
+          </span>
           <span className="text-xl font-bold text-brand">
             {formatPrice(totalPrice)}
           </span>
@@ -190,18 +202,15 @@ export function CheckoutForm({
 
         <button
           type="submit"
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-[#25D366] py-3 text-sm font-bold text-white transition hover:brightness-95"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-[#25D366] py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:brightness-95"
         >
           <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
             <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.4 14c-.2.6-1.2 1.2-1.7 1.2-.4 0-1 .1-3.3-.9-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1-1.4-1-2.6s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.3.5-.3.3c-.1.2-.3.3-.1.6.1.3.7 1.2 1.5 1.9 1 .9 1.8 1.1 2 1.2.3.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.3Z" />
           </svg>
-          Enviar pedido por WhatsApp
+          {t.checkout.send}
         </button>
 
-        <p className="mt-3 text-xs text-ink-soft">
-          Se abre WhatsApp con el pedido ya escrito. No se cobra nada acá: el pago
-          se coordina con el vendedor.
-        </p>
+        <p className="mt-3 text-xs text-ink-soft">{t.checkout.sendHint}</p>
       </aside>
     </form>
   );

@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { logoutAction } from "@/app/actions/auth";
 import { AdminNav } from "@/components/admin-nav";
-import { getStoreConfig } from "@/lib/data-source";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { WiedmerLogo } from "@/components/wiedmer-logo";
+import { getT, getTheme } from "@/lib/request-context";
 
 /**
  * Layout del panel. El acceso ya está protegido por `src/proxy.ts`: si el
@@ -14,26 +16,26 @@ import { getStoreConfig } from "@/lib/data-source";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
-  const config = await getStoreConfig();
+  const [t, theme] = await Promise.all([getT(), getTheme()]);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-card">
         <div className="container-wiedmer flex h-16 items-center gap-4">
-          <Link href="/admin" className="shrink-0">
-            <span className="text-lg font-bold tracking-[0.18em] text-brand">
-              {config.logoText}
-            </span>
+          <Link href="/admin" className="flex shrink-0 items-center text-brand">
+            <WiedmerLogo size="sm" />
             <span className="ml-2 hidden text-xs font-semibold uppercase tracking-wide text-ink-soft sm:inline">
-              Panel
+              {t.common.panel}
             </span>
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle t={t.theme} initial={theme} />
+
             <Link
               href="/"
               target="_blank"
-              className="rounded-md px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-surface"
+              className="rounded-md px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-surface hover:text-ink"
             >
               Ver tienda ↗
             </Link>
@@ -43,9 +45,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="rounded-md border border-line px-3 py-2 text-sm font-medium transition hover:bg-surface"
+                className="rounded-md border border-line px-3 py-2 text-sm font-medium transition hover:border-brand hover:text-brand"
               >
-                Cerrar sesión
+                {t.common.logout}
               </button>
             </form>
           </div>

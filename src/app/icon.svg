@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!--
+    Favicon: el isotipo de Wiedmer.
+
+    `app/icon.svg` es una convención de Next: con solo existir, Next lo enlaza
+    en el <head> de todas las páginas. No hace falta escribir ningún <link>.
+
+    A diferencia del logo del sitio (azul sobre transparente), acá va el bloque
+    azul relleno con la W en blanco: a 16 píxeles, que es el tamaño real de una
+    pestaña, un contorno fino desaparece y un bloque macizo se distingue.
+  -->
+  <rect width="120" height="120" rx="26" fill="#113bc2"/>
+  <polygon
+    points="22.7,36 38,36 49.4,69.9 60,55.8 70.6,69.9 82,36 97.4,36 81.2,84 65.9,84 60,76.2 54.2,84 38.9,84"
+    fill="#ffffff"/>
+</svg>

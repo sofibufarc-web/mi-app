@@ -41,7 +41,7 @@ export default async function AdminProductosPage({ searchParams }: Props) {
         </div>
         <Link
           href="/admin/productos/nuevo"
-          className="rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          className="rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
         >
           + Nuevo producto
         </Link>
@@ -61,7 +61,7 @@ export default async function AdminProductosPage({ searchParams }: Props) {
 
       <form
         action="/admin/productos"
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-4"
+        className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4"
       >
         <label className="flex flex-1 basis-56 flex-col gap-1">
           <span className="text-xs font-semibold text-ink-soft">Buscar</span>
@@ -93,7 +93,7 @@ export default async function AdminProductosPage({ searchParams }: Props) {
 
         <button
           type="submit"
-          className="h-10 rounded-md bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          className="h-10 rounded-md bg-brand px-5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
         >
           Filtrar
         </button>
@@ -106,11 +106,11 @@ export default async function AdminProductosPage({ searchParams }: Props) {
       </form>
 
       {products.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white p-10 text-center text-sm text-ink-soft">
+        <p className="rounded-lg border border-dashed border-line bg-card p-10 text-center text-sm text-ink-soft">
           No hay productos con esos criterios.
         </p>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-card">
           {products.map((product) => (
             <li
               key={product.id}

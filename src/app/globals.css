@@ -1,43 +1,150 @@
 @import "tailwindcss";
 
 /*
+ * ---------------------------------------------------------------------------
+ * SISTEMA DE COLOR
+ * ---------------------------------------------------------------------------
  * Tailwind v4 se configura desde el CSS, no desde tailwind.config.js.
  * Todo lo que declaramos dentro de `@theme` se convierte en utilidades:
  *   --color-brand  →  bg-brand, text-brand, border-brand…
  *   --font-sans    →  font-sans
  *
- * Los colores salen del CSS real de wiedmer.com.ar (ver CLAUDE.md, sección 2).
+ * El truco para el modo noche: en vez de escribir `dark:` en cada elemento,
+ * redefinimos el VALOR de cada token cuando el tema es oscuro. Como las
+ * utilidades de Tailwind son `background-color: var(--color-card)`, cambiar la
+ * variable cambia toda la interfaz de una. Solo usamos el prefijo `dark:` en
+ * los pocos casos donde el cambio no es de color sino de tratamiento.
+ *
+ * Los colores del tema claro salen del CSS real de wiedmer.com.ar
+ * (ver CLAUDE.md, sección 2).
+ * ---------------------------------------------------------------------------
  */
 @theme {
-  --color-brand: #113bc2;
-  --color-brand-dark: #0d2d94;
-  --color-brand-darker: #07184d;
-  --color-brand-soft: #eef2ff;
+  /* Superficies, de la más “al fondo” a la más “al frente” */
+  --color-page: #ffffff; /* fondo general de la página */
+  --color-card: #ffffff; /* fichas, paneles, tarjetas */
+  --color-surface: #f7f8fa; /* bloques suaves, inputs, secciones alternas */
+  --color-line: #e8e8e8; /* bordes y separadores */
 
-  --color-ink: #191919;
-  --color-ink-soft: #5a6475;
-  --color-line: #e8e8e8;
-  --color-surface: #f7f8fa;
+  /* Texto */
+  --color-ink: #191919; /* texto principal */
+  --color-ink-soft: #5a6475; /* texto secundario */
+
+  /* Marca */
+  --color-brand: #113bc2; /* acento: links, precios, botones */
+  --color-brand-dark: #0d2d94; /* hover del acento */
+  --color-brand-darker: #07184d; /* fondos oscuros: hero, footer */
+  --color-brand-soft: #eef2ff; /* fondo azulado muy suave */
+  /*
+   * Texto que va ENCIMA de un fondo `brand`. Existe como token propio porque
+   * en modo noche el azul de marca se aclara para poder leerse sobre negro, y
+   * entonces el texto encima ya no puede ser blanco: tiene que ser oscuro.
+   */
+  --color-on-brand: #ffffff;
 
   --font-sans: var(--font-libre-franklin), system-ui, -apple-system, sans-serif;
+
+  /* Curvas de animación reutilizables */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-:root {
-  /* La tienda es de fondo claro. Se lo decimos al navegador para que no
-     invierta los colores de los controles nativos en modo oscuro. */
-  color-scheme: light;
+/*
+ * Valores del tema OSCURO.
+ *
+ * Se aplican en dos situaciones, y por eso el bloque está repetido:
+ *   1. El sistema operativo está en modo oscuro y el usuario NO eligió
+ *      explícitamente el modo claro  → @media (prefers-color-scheme: dark)
+ *   2. El usuario apretó el botón de modo noche → :root[data-theme="dark"]
+ *
+ * Escribirlo así permite tres estados (claro / oscuro / “el que diga el
+ * sistema”) en vez de dos.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme="dark"] *, :root[data-theme="dark"]) {
+    @slot;
+  }
+}
+
+/* Los valores oscuros en sí, en un solo lugar para no duplicarlos. */
+@layer theme {
+  :root {
+    color-scheme: light;
+  }
+
+  /* stylelint-disable-next-line */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-page: #0a0f1e;
+    --color-card: #111829;
+    --color-surface: #161f34;
+    --color-line: #26314b;
+
+    --color-ink: #eef1f7;
+    --color-ink-soft: #9aa6bd;
+
+    --color-brand: #7aa2ff;
+    --color-brand-dark: #a3bfff; /* en oscuro el hover ACLARA, no oscurece */
+    --color-brand-darker: #070d1c;
+    --color-brand-soft: #17223d;
+    --color-on-brand: #07132e;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --color-page: #0a0f1e;
+      --color-card: #111829;
+      --color-surface: #161f34;
+      --color-line: #26314b;
+
+      --color-ink: #eef1f7;
+      --color-ink-soft: #9aa6bd;
+
+      --color-brand: #7aa2ff;
+      --color-brand-dark: #a3bfff;
+      --color-brand-darker: #070d1c;
+      --color-brand-soft: #17223d;
+      --color-on-brand: #07132e;
+    }
+  }
 }
 
 body {
-  background: #ffffff;
+  background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* La transición hace que el cambio de tema no sea un salto brusco. */
+  transition:
+    background-color 0.3s var(--ease-out-soft),
+    color 0.3s var(--ease-out-soft);
+}
+
+/* Los anclas internos scrollean suave, sin saltar. */
+html {
+  scroll-behavior: smooth;
+  /* Deja aire arriba al saltar a una sección, para que no quede tapada por
+     el header sticky. */
+  scroll-padding-top: 8rem;
 }
 
 /* Anillo de foco visible y consistente: importa para accesibilidad. */
 :focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+}
+
+/* Selección de texto con el color de marca. */
+::selection {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
 }
 
 /* Oculta las flechitas de los <input type="number"> del panel. */
@@ -55,4 +162,168 @@ input[type="number"] {
   width: 100%;
   max-width: 80rem; /* 1280px */
   padding-inline: 1rem;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * ANIMACIONES
+ * ---------------------------------------------------------------------------
+ */
+
+/*
+ * Aparición al hacer scroll.
+ *
+ * El elemento arranca invisible y unos píxeles más abajo. Cuando el
+ * IntersectionObserver de `src/components/reveal.tsx` detecta que entró en
+ * pantalla, le agrega `data-visible` y el elemento se acomoda.
+ *
+ * `--reveal-delay` la setea el componente por elemento, para que los ítems de
+ * una grilla entren en cascada en vez de todos juntos.
+ */
+@utility reveal {
+  opacity: 0;
+  transform: translateY(1.5rem);
+  transition:
+    opacity 0.7s var(--ease-out-soft),
+    transform 0.7s var(--ease-out-soft);
+  transition-delay: var(--reveal-delay, 0ms);
+
+  &[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wiedmer-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wiedmer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Acercamiento lento de una foto de fondo.
+ *
+ * Arranca un poco más grande y se va acomodando durante varios segundos. El
+ * movimiento es tan lento que no se percibe como animación: se siente como que
+ * la imagen "respira". Es un recurso clásico de las cabeceras editoriales y da
+ * sensación de producción cuidada sin distraer de lo que dice el título.
+ */
+@keyframes wiedmer-slow-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Rebote sutil hacia arriba y abajo: la flechita “seguí scrolleando”. */
+@keyframes wiedmer-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(0.4rem);
+    opacity: 1;
+  }
+}
+
+@utility animate-fade-up {
+  animation: wiedmer-fade-up 0.8s var(--ease-out-soft) both;
+}
+
+@utility animate-fade-in {
+  animation: wiedmer-fade-in 1s var(--ease-out-soft) both;
+}
+
+@utility animate-nudge {
+  animation: wiedmer-nudge 2.2s ease-in-out infinite;
+}
+
+/*
+ * Ken Burns: la foto entra grande y ligeramente corrida, y durante toda la
+ * placa se va acomodando. Es el recurso con el que los documentales le dan
+ * movimiento a una foto fija; acá es lo que hace que el carrusel se lea como
+ * video y no como diapositivas.
+ *
+ * Dura más que la placa (8s contra 6s) a propósito: así el movimiento se corta
+ * mientras todavía está andando y nunca se ve "frenar", que es lo que delata
+ * el truco.
+ */
+@keyframes wiedmer-ken-burns {
+  from {
+    transform: scale(1.12) translate3d(1.5%, 1%, 0);
+  }
+  to {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+/*
+ * Barra de progreso del carrusel: crece de izquierda a derecha.
+ *
+ * Se anima `transform` y no `width` porque el navegador puede resolver una
+ * transformación en la placa de video, sin volver a calcular el layout de la
+ * página en cada cuadro. Animar `width` obliga a recalcular, y en un elemento
+ * que se mueve 6 segundos seguidos eso se nota.
+ */
+@keyframes wiedmer-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@utility animate-ken-burns {
+  animation: wiedmer-ken-burns 8s var(--ease-out-soft) both;
+}
+
+@utility animate-slow-zoom {
+  animation: wiedmer-slow-zoom 12s var(--ease-out-soft) both;
+}
+
+/*
+ * Respetar “reducir movimiento”.
+ *
+ * Es una preferencia del sistema operativo. Quien la activa suele hacerlo por
+ * mareos o migrañas con el movimiento en pantalla; ignorarla no es un detalle
+ * estético sino de accesibilidad. Anulamos las animaciones pero NO la
+ * visibilidad: el contenido tiene que verse igual.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

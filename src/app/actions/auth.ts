@@ -3,8 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { siteConfig } from "@/config/site";
-import { credentialsAreValid, expectedSessionToken } from "@/lib/auth";
+import { anyAuthIsConfigured, siteConfig } from "@/config/site";
+import { canManageStore, roleForCredentials, sessionTokenFor } from "@/lib/auth";
+import { getT } from "@/lib/request-context";
 
 /**
  * Server Actions de sesión.
@@ -24,19 +25,26 @@ export async function loginAction(
 ): Promise<LoginState> {
   const user = String(formData.get("user") ?? "");
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/admin");
+  const next = String(formData.get("next") ?? "");
+  const t = await getT();
 
-  if (!credentialsAreValid(user, password)) {
-    // Mensaje genérico a propósito: no decimos si falló el usuario o la clave.
-    return { error: "Usuario o contraseña incorrectos." };
+  if (!anyAuthIsConfigured()) {
+    return { error: t.login.notConfigured };
   }
 
-  // `credentialsAreValid` ya garantiza que las variables están configuradas,
-  // así que acá el token nunca es null. TypeScript no puede deducirlo solo, y
-  // este chequeo además nos cubre si alguien reordena el código más adelante.
-  const token = await expectedSessionToken();
+  const role = roleForCredentials(user, password);
+  if (role === null) {
+    // Mensaje genérico a propósito: no decimos si falló el usuario o la clave,
+    // así nadie puede ir descubriendo usuarios válidos a fuerza de probar.
+    return { error: t.login.error };
+  }
+
+  // `roleForCredentials` ya garantiza que las variables de ese rol están
+  // configuradas, así que acá el token nunca es null. TypeScript no puede
+  // deducirlo solo, y el chequeo nos cubre si alguien reordena el código.
+  const token = await sessionTokenFor(role);
   if (token === null) {
-    return { error: "El panel no está configurado. Falta definir ADMIN_USER, ADMIN_PASSWORD y SESSION_SECRET." };
+    return { error: t.login.notConfigured };
   }
 
   const cookieStore = await cookies();
@@ -51,14 +59,22 @@ export async function loginAction(
     maxAge: siteConfig.auth.maxAge,
   });
 
+  // A dónde va después de entrar:
+  // - si venía de una página protegida, vuelve ahí;
+  // - si no, el admin va al panel y el cliente al catálogo, que es lo que
+  //   quiere ver ahora que tiene los precios destrabados.
+  const fallback = canManageStore(role) ? "/admin" : "/";
+
   // Solo permitimos redirigir a rutas internas: si alguien manipula ?next=
   // con una URL externa, lo ignoramos (open redirect).
-  const target = next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+  const target =
+    next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+
   redirect(target);
 }
 
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete(siteConfig.auth.cookieName);
-  redirect("/login");
+  redirect("/");
 }

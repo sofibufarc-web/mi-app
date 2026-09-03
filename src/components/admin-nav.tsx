@@ -32,7 +32,7 @@ export function AdminNav() {
             aria-current={active ? "page" : undefined}
             className={`shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition ${
               active
-                ? "bg-brand text-white"
+                ? "bg-brand text-on-brand"
                 : "text-ink-soft hover:bg-surface hover:text-ink"
             }`}
           >

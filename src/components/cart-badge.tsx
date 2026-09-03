@@ -3,15 +3,16 @@
 import Link from "next/link";
 
 import { useCart } from "@/components/use-cart";
+import type { Dictionary } from "@/lib/i18n";
 
 /** Icono de carrito del header con el contador de ítems. */
-export function CartBadge() {
+export function CartBadge({ t }: { t: Dictionary["common"] }) {
   const { totalItems, ready } = useCart();
 
   return (
     <Link
       href="/carrito"
-      className="relative flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-ink transition hover:bg-surface"
+      className="relative flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-surface"
     >
       <svg
         aria-hidden
@@ -25,12 +26,18 @@ export function CartBadge() {
         <circle cx="9.5" cy="20" r="1.4" />
         <circle cx="17" cy="20" r="1.4" />
       </svg>
-      <span className="hidden sm:inline">Carrito</span>
+      <span className="hidden sm:inline">{t.cart}</span>
 
       {/* `ready` evita que el número parpadee de 0 al valor real cuando se
-          lee localStorage después del primer render. */}
+          lee localStorage después del primer render.
+          `key` fuerza a React a recrear el elemento cada vez que cambia el
+          total: así se vuelve a disparar la animación de entrada y el número
+          "salta" cuando agregás algo. */}
       {ready && totalItems > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-white">
+        <span
+          key={totalItems}
+          className="animate-fade-up absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-on-brand"
+        >
           {totalItems}
         </span>
       )}
