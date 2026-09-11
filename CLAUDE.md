@@ -1126,8 +1126,15 @@ o usá el selector ES/EN del header.
   Washington y cada consulta cruzaría el continente dos veces. Si se muda el
   proyecto de Supabase, hay que cambiar también este archivo.
 - `.vercelignore` deja afuera `imagenes/` (20 MB de originales), `remotion/`,
-  `supabase/` y `scripts/`: nada de eso participa del build. Solo interviene si
-  se deploya con el CLI; con la integración de GitHub manda `.gitignore`.
+  `supabase/` y `scripts/`: nada de eso participa del build. Se aplica siempre,
+  también cuando el deploy viene de GitHub; el log del build lo dice
+  ("Removed N ignored files defined in .vercelignore").
+  > **Cada patrón lleva `/` adelante y no es decorativo.** Sin la barra, el
+  > patrón coincide con cualquier carpeta de ese nombre a cualquier
+  > profundidad: escrito `supabase/`, se lleva puesta también
+  > `src/lib/supabase/`, que es el código del login, y el deploy falla con
+  > siete "Module not found". En local no se nota, porque este archivo solo
+  > actúa durante el deploy. Ya pasó una vez.
 
 ---
 
