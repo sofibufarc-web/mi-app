@@ -46,3 +46,9 @@ next-env.d.ts
 # Imágenes subidas desde el panel: son datos, no código.
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# Listados del proveedor: son datos, no código. El PDF llega por mail cada mes
+# y el .xlsx es el paso intermedio para importarlo con scripts/importar-lista.mjs.
+# Lo que queda versionado es el resultado: los productos en la base.
+/imagenes/*.pdf
+/lista-precios-*.xlsx

@@ -1,117 +1,37 @@
-import {
-  adminAuthIsConfigured,
-  clientAuthIsConfigured,
-  siteConfig,
-  type Role,
-} from "@/config/site";
+import type { Role } from "@/data/types";
 
 /**
- * Sesión: dos niveles con un solo mecanismo.
+ * Quién es el visitante, y qué puede hacer.
+ * ---------------------------------------------------------------------------
+ * Acá ya no hay criptografía. Antes este archivo firmaba y verificaba una cookie
+ * a mano; ahora de la sesión se ocupa **Supabase Auth**, que emite y renueva sus
+ * propios tokens. Lo que queda son las dos reglas de la aplicación, que Supabase
+ * no puede conocer porque son del negocio y no de la autenticación.
  *
- * La idea es simple: no guardamos la contraseña en la cookie. Guardamos un
- * "token" que es el hash SHA-256 de `rol:usuario:contraseña:secreto`. En cada
- * request comparamos la cookie contra los tokens posibles y así sabemos con
- * qué rol entró. Si alguien roba la cookie no puede deducir la contraseña (un
- * hash no se puede revertir).
+ * Están en funciones propias y no escritas sueltas por ahí para que el día que
+ * cambien haya un solo lugar donde tocar. Son dos líneas cada una a propósito.
  *
- * El `rol:` adelante importa: sin él, si el cliente y el admin tuvieran por
- * casualidad las mismas credenciales, los dos tokens serían idénticos.
+ * Dónde vive cada cosa ahora:
  *
- * Usamos `crypto.subtle` (Web Crypto), que es la API estándar de criptografía
- * del navegador y también existe en Node y en el runtime Edge. Esto importa
- * porque el proxy corre en Edge, donde `node:crypto` NO está disponible.
- *
- * Todo acá es async porque `crypto.subtle.digest` devuelve una promesa.
- *
- * ⚠️ Es una sesión simple, suficiente para un login genérico compartido. No
- * reemplaza a un sistema de usuarios real (ver "Pendientes" en CLAUDE.md).
+ * - Iniciar y cerrar sesión → `src/app/actions/auth.ts`
+ * - Leer la sesión en el servidor → `getSession()` de `src/lib/request-context.ts`
+ * - Renovar el token en cada request → `src/proxy.ts`
+ * - El rol de cada cuenta → tabla `public.profiles`, vía `src/lib/data-source.ts`
  */
 
-async function sha256Hex(input: string): Promise<string> {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/**
- * El token que corresponde a un rol.
- *
- * Devuelve `null` si a ese rol le falta alguna variable de entorno. Devolver
- * null en vez de un hash de cadenas vacías es importante: si no, el token de
- * "sin configurar" sería un valor fijo y conocido, y cualquiera podría ponerlo
- * en su cookie y entrar.
- */
-export async function sessionTokenFor(role: Role): Promise<string | null> {
-  const { sessionSecret } = siteConfig.auth;
-
-  if (role === "admin") {
-    if (!adminAuthIsConfigured()) return null;
-    const { user, password } = siteConfig.auth.admin;
-    return sha256Hex(`admin:${user}:${password}:${sessionSecret}`);
-  }
-
-  if (!clientAuthIsConfigured()) return null;
-  const { user, password } = siteConfig.auth.client;
-  return sha256Hex(`cliente:${user}:${password}:${sessionSecret}`);
-}
-
-/**
- * ¿Con qué rol entran estas credenciales? `null` si no son válidas.
- *
- * Se prueba admin primero: si alguien configuró las mismas credenciales para
- * los dos, que entre con el rol más alto.
- */
-export function roleForCredentials(user: string, password: string): Role | null {
-  const cleanUser = user.trim();
-
-  if (
-    adminAuthIsConfigured() &&
-    cleanUser === siteConfig.auth.admin.user &&
-    password === siteConfig.auth.admin.password
-  ) {
-    return "admin";
-  }
-
-  if (
-    clientAuthIsConfigured() &&
-    cleanUser === siteConfig.auth.client.user &&
-    password === siteConfig.auth.client.password
-  ) {
-    return "cliente";
-  }
-
-  return null;
-}
-
-/**
- * ¿A qué rol corresponde el valor de la cookie? `null` si no es válido o si no
- * hay cookie.
- *
- * Es la función que usa todo el resto de la app para preguntar "¿quién es
- * este?". El proxy la usa para cortar el paso a `/admin`; las páginas, para
- * decidir si muestran los precios.
- */
-export async function roleForSessionToken(
-  token: string | undefined,
-): Promise<Role | null> {
-  if (!token) return null;
-
-  const adminToken = await sessionTokenFor("admin");
-  if (adminToken !== null && token === adminToken) return "admin";
-
-  const clientToken = await sessionTokenFor("cliente");
-  if (clientToken !== null && token === clientToken) return "cliente";
-
-  return null;
-}
+/** La sesión resuelta de un request: la cuenta de Auth más su rol. */
+export type Session = {
+  /** UUID de la cuenta en Supabase Auth. */
+  userId: string;
+  email: string;
+  role: Role;
+};
 
 /**
  * ¿Este rol puede ver precios y armar pedidos?
  *
  * Hoy la respuesta es "cualquiera que haya iniciado sesión", pero está en una
- * función propia para que el día que existan listas mayorista/minorista se
+ * función propia para que el día que existan listas mayorista y minorista se
  * cambie en un solo lugar.
  */
 export function canSeePrices(role: Role | null): boolean {

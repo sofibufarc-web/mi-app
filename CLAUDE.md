@@ -19,15 +19,16 @@ Aires, Entre Ríos, Córdoba y La Pampa.
 | Incluye | No incluye |
 | --- | --- |
 | Catálogo público de productos y categorías | Pasarela de pagos |
-| Carrito persistente en el navegador | Base de datos (por ahora) |
-| Checkout que arma un pedido y lo envía por **WhatsApp** | Cuentas de usuario individuales |
-| Panel `/admin` protegido por login genérico | Facturación / stock en tiempo real |
+| Carrito persistente en el navegador | Cuentas de usuario individuales |
+| Checkout que arma un pedido y lo envía por **WhatsApp** | Facturación / stock en tiempo real |
+| Panel `/admin` protegido por login genérico | Historial de listas anteriores |
 | Muro de precios: sin login se ve el catálogo pero no los precios | Precios distintos por cliente |
-| Descarga de la lista de precios en Excel (solo clientes) | Historial de listas anteriores |
+| Descarga de la lista de precios en Excel (solo clientes) | Envíos / logística |
+| Datos en **Postgres (Supabase)** | Idiomas más allá de español e inglés |
 | Modo día / modo noche | |
 | Español e inglés, detectados por país de IP | Traducción de los nombres de producto |
-| ABM de productos, categorías y config de tienda | Envíos / logística |
-| Carga masiva de precios desde Excel | Idiomas más allá de español e inglés |
+| ABM de productos, categorías y config de tienda | |
+| Carga masiva de precios desde Excel | |
 
 **No se procesan pagos.** El checkout genera un mensaje de texto formateado y abre
 WhatsApp (`https://wa.me/<numero>?text=...`) hacia el número de la tienda.
@@ -222,9 +223,11 @@ azul cayendo de un tarro a una bandeja. Encima, dos velos negros, el título
   pintura, que es lo que se quiere ver.
 - **`min-h` y no `h`:** fija un piso pero deja crecer. Con altura fija, en un
   celular angosto el título se saldría de la foto.
-- **Los números** (artículos, provincias, reparto) salieron del hero a una
-  franja propia sobre `surface`, justo debajo. Adentro obligaban a que la foto
-  fuera alta; afuera se leen igual y el hero queda corto.
+- **Los números** (artículos, provincias, reparto) primero salieron del hero a
+  una franja propia debajo, y después se sacaron del todo: eran un dato de
+  folleto, no algo que el visitante viniera a buscar. Del hero se pasa directo a
+  "¿Qué necesitás hacer?". Los textos siguen en el diccionario (`t.hero.stats`)
+  por si algún día vuelven, pero hoy no los usa nadie.
 - El original está en `imagenes/hero.png` y el `.webp` que se sirve pesa 109 KB
   contra 2,4 MB del PNG (−96%).
 
@@ -237,9 +240,9 @@ azul cayendo de un tarro a una bandeja. Encima, dos velos negros, el título
 | Bloque | Qué hace | Sin sesión | Con sesión |
 | --- | --- | --- | --- |
 | Hero | Franja con una foto fija, título y bajada | sí | sí (+ botón "hablar con un vendedor") |
-| Números | Franja fina con los datos reales del catálogo | sí | sí |
 | Accesos | Las acciones concretas del visitante | solo "recorrer el catálogo" + cartel de acceso | las tres |
 | Categorías | Fichas con foto y nombre encima | sí | sí |
+| Simulador de color | Elegís un color y lo ves aplicado | sí | sí |
 | La empresa | Quiénes somos, zona de reparto, contacto | sí | sí |
 | Cómo se compra | Los tres pasos del pedido, en fichas numeradas | sí | sí |
 | Cierre | Llamada a WhatsApp | sí | sí |
@@ -322,11 +325,76 @@ del título—. El degradado no es decoración: sin él habría que elegir entre
 visible o título legible, porque algunas fotos son claras (lijas) y otras
 oscuras (impermeabilizantes).
 
+### El simulador de color
+
+`src/components/color-simulator.tsx`. Elegís un color de la carta y lo ves
+aplicado sobre una escena. Dos escenas, con una pestaña que las cambia: **una
+pared** (para pinturas) y **una reja** (para aerosoles, que es lo que de verdad
+se pinta con un spray).
+
+**No es realidad virtual ni realidad aumentada.** No hay cámara, ni 3D, ni
+anteojos. Es lo que en el rubro se llama *simulador de color*, que es lo que la
+gente pide cuando dice "quiero ver cómo queda".
+
+**La escena está dibujada en SVG, no es una foto.** Con una foto habría que
+recortar a mano qué píxeles son pared —la misma medición que hubo que hacer para
+el video del hero— y repetirlo con cada foto nueva. Acá cada superficie es un
+`<path>`, así que pintar es cambiarle el `fill` a un elemento. Además pesa unos
+KB y se ve nítido en cualquier pantalla. La contra, asumida: se lee como
+ilustración y no como foto. Si algún día hay fotos de ambientes, se reemplaza la
+escena sin tocar el resto.
+
+**Lo que hace que el color no se vea plano:** el color va en una capa y las
+sombras y luces en otra, encima, en **gris translúcido**. Como el degradado no
+tiene color propio, oscurece o aclara lo que tenga debajo sea cual sea. Un solo
+juego de sombras sirve para los 22 colores; con sombras coloreadas habría que
+dibujar 22.
+
+**La reja se dibuja una sola vez.** Las barras viven en `<defs>` sin color
+propio, y la escena las pinta tres veces con `<use>`: la sombra proyectada en la
+pared (negro corrido), el color, y el sombreado del metal. Escribirlas tres
+veces significaría que mover un barrote hay que acordarse de moverlo en tres
+lados.
+
+**Las dos animaciones** (`animate-roller` y `animate-spray` en `globals.css`) se
+disparan una sola vez, al elegir un color, y vuelven a arrancar gracias a
+`key={color.id}`: React ve una key distinta, monta un elemento nuevo y la
+animación CSS empieza de cero. Es el mismo truco que usa el carrusel de placas.
+Con `prefers-reduced-motion` se anulan solas por la regla global, y el color
+igual queda aplicado, que es lo que importa.
+
+Dos detalles que no se ven pero cambian el resultado:
+
+- La banda del rodillo lleva el `skewX` en un `<g>` que la envuelve, no en el
+  `<rect>`. Un `transform` de CSS **pisa** al atributo `transform` del SVG: con
+  los dos en el mismo elemento, la banda se movía pero perdía la diagonal.
+- La nube del spray lleva `transform-box: fill-box`. Sin eso, CSS toma el
+  `viewBox` entero como caja de referencia y la nube crece desde una esquina en
+  vez de desde su centro.
+
+**La carta de colores** está en `src/data/paint-colors.ts`. Es un `.ts` y no una
+tabla de la base porque el panel no la edita: la regla del proyecto es que a la
+base va lo que se escribe en tiempo de ejecución, y la carta es fija. Los **nombres de los colores no se
+traducen**, por lo mismo que no se traduce "Látex Interior 20 L": es el nombre
+comercial del color. Lo que sí está en el diccionario (`t.simulator`) es la
+interfaz alrededor.
+
+`isLightColor()` en `src/lib/color.ts` decide si el nombre del color va escrito
+en negro o en blanco encima de la muestra. No es el promedio de R, G y B: usa
+los coeficientes de luminancia de la norma WCAG, porque el ojo percibe el verde
+mucho más luminoso que el azul. Por eso un amarillo pleno se lee "claro" y un
+azul pleno "oscuro", aunque los dos usen dos canales al máximo.
+
+**Va después de las categorías, no antes.** Quien entra a un mayorista viene a
+buscar un rubro: primero se le da eso, y el simulador después, que además lo
+devuelve al catálogo con su propio botón ("Ver pinturas" / "Ver aerosoles").
+Arriba se comería el lugar de lo que la gente vino a hacer.
+
 ### Layout
 
 - **Home**: es una PORTADA INSTITUCIONAL. **No muestra ni un producto.** El
-  orden es: hero → números → accesos rápidos → categorías → la empresa →
-  cómo se compra → cierre. Las categorías van arriba, pegadas a "¿Qué necesitás
+  orden es: hero → accesos rápidos → categorías → simulador de color →
+  la empresa → cómo se compra → cierre. Las categorías van arriba, pegadas a "¿Qué necesitás
   hacer?", porque son el destino real del visitante: lo institucional se lee
   después, no antes. Los artículos viven en
   `/categoria/<slug>`, y se llega por las fichas de categoría.
@@ -355,9 +423,20 @@ oscuras (impermeabilizantes).
 mi-app/
 ├── CLAUDE.md                 ← este archivo
 ├── README.md                 ← cómo correr y deployar
-├── .env.example              ← variables futuras (Supabase), todas opcionales
+├── vercel.json               ← región de las funciones (São Paulo, donde está la base)
+├── .vercelignore             ← qué no subir al deploy (originales pesados, herramientas)
+├── .env.example              ← variables de entorno (credenciales + base de datos)
+├── supabase/
+│   ├── config.toml           ← apunta al proyecto de Supabase
+│   └── migrations/           ← ★ el esquema de la base, en orden cronológico
+│       ├── 20260909120000_esquema_inicial.sql
+│       ├── 20260909120100_datos_iniciales.sql
+│       ├── 20260909140000_perfiles.sql      ← rol de cada cuenta de Supabase Auth
+│       ├── 20260910203436_ids_de_mas_de_tres_digitos.sql
+│       ├── 20260911120000_baja_tabla_users.sql
+│       └── 20260911140000_storage_imagenes.sql  ← bucket de fotos y sus permisos
 ├── public/
-│   ├── uploads/              ← imágenes subidas desde el panel (git las ignora)
+│   ├── uploads/              ← vacío: las fotos ahora van a Supabase Storage
 │   ├── img/categorias/       ← fotos .webp de cada categoría (+ SVG viejos)
 │   ├── video/                ← video del hero ya renderizado (+ su póster)
 │   └── plantilla-precios.xlsx← plantilla descargable para la carga de precios
@@ -370,19 +449,29 @@ mi-app/
 │       ├── escena.tsx        ← la animación
 │       └── geometria.ts      ← silueta del chorro, MEDIDA sobre la foto
 ├── scripts/
-│   ├── generar-plantilla.mjs        ← genera la plantilla .xlsx
+│   ├── db.mjs                       ← envoltorio del CLI de Supabase
+│   ├── probar-conexion.mjs          ← chequeo rápido de la base
+│   ├── generar-plantilla.mjs        ← genera la plantilla .xlsx (lee la base)
+│   ├── importar-lista.mjs           ← carga inicial del catálogo desde el Excel
 │   ├── optimizar-imagenes.mjs           ← fotos originales → WebP
-│   └── generar-imagenes-categorias.mjs   ← SVG de respaldo (ya no se usan)
+│   └── generar-imagenes-categorias.mjs   ← SVG de respaldo por categoría
 └── src/
     ├── config/site.ts        ← config estática (credenciales, flags). NO editable desde el panel
     ├── data/
     │   ├── types.ts          ← Product, Category, StoreConfig, Order, CartItem
-    │   ├── products.json     ← datos persistidos
-    │   ├── categories.json
-    │   └── store-config.json
+    │   ├── paint-colors.ts   ← carta de colores del simulador (no la edita el panel)
+    │   └── (los .json viejos se borraron: los datos están en la base)
     ├── lib/
+    │   ├── db.ts             ← ★ conexión a Postgres
+    │   ├── storage.ts        ← fotos de producto → Supabase Storage
     │   ├── data-source.ts    ← ★ ÚNICA capa de acceso a datos
-    │   ├── auth.ts           ← sesión y ROLES (Web Crypto, sirve en Edge)
+    │   ├── auth.ts           ← las dos reglas de rol (ver precios / entrar al panel)
+    │   ├── supabase/         ← clientes de Supabase Auth
+    │   │   ├── client-config.ts ← URL y clave pública, en un solo lugar
+    │   │   ├── server.ts     ← páginas y Server Actions
+    │   │   ├── proxy-client.ts← el proxy (Edge)
+    │   │   ├── browser.ts    ← solo la pantalla de restablecer contraseña
+    │   │   └── admin.ts      ← altas de cuenta y mail de restablecimiento
     │   ├── request-context.ts← ★ "¿quién mira y en qué idioma?" (servidor)
     │   ├── i18n.ts           ← diccionarios es / en
     │   ├── locale.ts         ← detección de idioma (puro, sirve en Edge)
@@ -392,10 +481,12 @@ mi-app/
     │   ├── price-parse.ts    ← interpreta "$ 89.900,50" → 89900.5
     │   ├── whatsapp.ts       ← armado del mensaje de pedido
     │   ├── slug.ts           ← slugify / normalizeText
+    │   ├── color.ts          ← ¿texto negro o blanco encima de este color?
     │   └── format.ts         ← formato de precios en ARS
     ├── components/           ← UI compartida (header, footer, cards, formularios…)
     │   ├── wiedmer-logo.tsx  ← logo SVG (isotipo + palabra)
     │   ├── hero-canvas.tsx   ← fondo animado del hero
+    │   ├── color-simulator.tsx← simulador de color de la home (pared / reja)
     │   ├── reveal.tsx        ← aparición al scrollear
     │   ├── theme-toggle.tsx  ← modo día / modo noche
     │   ├── language-switcher.tsx
@@ -412,6 +503,7 @@ mi-app/
         │   ├── carrito/page.tsx
         │   └── checkout/{page.tsx,enviado/page.tsx}
         ├── login/page.tsx
+        ├── actualizar-password/page.tsx ← donde aterriza el link del mail
         ├── actions/auth.ts             ← Server Actions de login y logout
         ├── admin/
         │   ├── layout.tsx  page.tsx  actions.ts
@@ -427,7 +519,7 @@ mi-app/
 ### Capa de datos — lo importante
 
 **Toda** lectura y escritura pasa por `src/lib/data-source.ts`. Ningún componente
-ni página toca `fs` ni los `.json` directamente. Funciones expuestas:
+ni página escribe SQL. Funciones expuestas:
 
 ```ts
 getProducts(filtros?)  getProductById(id)  getProductBySlug(slug)
@@ -449,32 +541,158 @@ getViewer()   // { role, showPrices, locale, t } — todo junto
 getTheme()    // "light" | "dark" | null (null = el del sistema)
 ```
 
-**Por qué JSON y no `.ts`:** el panel escribe datos en tiempo de ejecución. Un
-archivo `.ts` importado queda cacheado por el bundler y habría que reiniciar el
-server para ver los cambios; un `.json` leído con `fs.readFile` en cada request
-siempre devuelve el estado actual. Los tipos viven aparte en `data/types.ts`, así
-que no se pierde el tipado.
+### La base de datos
 
-### Migrar a Supabase (pendiente)
+Postgres, alojado en **Supabase**. La app se conecta **directo por Postgres** con
+el driver `postgres` (postgres.js), no por la API HTTP de Supabase. Es la misma
+base; cambia el camino.
 
-Solo se toca `src/lib/data-source.ts`. Cada función tiene un comentario
-`// TODO(supabase):` con el reemplazo concreto. Ejemplo:
+`src/lib/db.ts` arma esa conexión y es el único lugar donde se lee la cadena.
 
-```ts
-// TODO(supabase): reemplazar por
-//   const { data } = await supabase.from('products').select('*')
+> **El puerto importa, y no es el que parece.** Supabase da dos URLs para la
+> misma base: `DIRECT_URL` (5432, pooler en modo sesión) y `DATABASE_URL` (6543,
+> pooler en modo transacción). La app usa **la de 5432**.
+>
+> El motivo: postgres.js manda varias consultas encadenadas por la misma
+> conexión sin esperar cada respuesta, que es lo que hace que una página que
+> pide seis cosas tarde lo que la más lenta y no la suma. El pooler en modo
+> transacción reparte una conexión distinta por transacción y con ese encadenado
+> pierde el hilo: **deja de responder, sin dar error**. Medido contra esta base:
+> 30 consultas de a una andan por los dos puertos, pero 30 en paralelo tardan
+> 504 ms por el 5432 y no terminan nunca por el 6543.
+>
+> El 6543 es el que recomienda Supabase para Prisma, que no encadena consultas.
+> Por eso la plantilla del panel lo pone primero.
+
+**Tres tablas**, que son los tres tipos de `data/types.ts`:
+
+| Tabla | Notas |
+| --- | --- |
+| `categories` | ids `c-001`… generados por una secuencia |
+| `products` | ids `p-001`…; `price` es `numeric`, no `float` |
+| `store_config` | una sola fila; `contact` y `colors` van como `jsonb` |
+
+**Dos formas de nombrar lo mismo.** Postgres usa snake_case (`category_id`) y la
+app camelCase (`categoryId`). La traducción vive en `data-source.ts` y en ningún
+otro lado, en las funciones `aProducto`, `aCategoria` y `aConfig`. Por eso la
+migración no obligó a tocar ni una página.
+
+**Tres detalles del driver** que sorprenden la primera vez:
+
+1. **`numeric` llega como texto.** `price` vuelve como `"89900.00"`. El driver no
+   convierte solo porque un `numeric` admite más precisión que un `number` de
+   JavaScript y no quiere perder centavos en silencio. Se convierte con `Number()`.
+2. **Las fechas llegan como `Date`**, y los tipos de la app las quieren en texto
+   ISO. Van con `.toISOString()`.
+3. **`NULL` no es `""`.** "Sin categoría" era la cadena vacía en los JSON; en la
+   base es `NULL`, que es lo que una clave foránea sabe manejar.
+
+**Cosas que antes hacía la app y ahora hace la base**, porque ahí es imposible
+olvidárselas:
+
+- Los ids (`p-034`) los genera una secuencia, no un `Math.max` sobre el array.
+  > Ojo con el relleno de ceros: `lpad(n, 3, '0')` no solo rellena, también
+  > **recorta**. El producto 1000 pedía el id `p-100`, que ya existía, y el alta
+  > fallaba con "duplicate key". Se ve recién al pasar los 999 productos.
+  > Lo arregla la migración `20260910203436_ids_de_mas_de_tres_digitos.sql`,
+  > que rellena hasta tres dígitos y de ahí en más deja el número entero.
+- `updated_at` lo pone un trigger en cada `UPDATE`.
+- Borrar una categoría deja sus productos sin categoría, por la clave foránea
+  (`on delete set null`), no por un bucle en JavaScript.
+- Las operaciones de varios pasos (borrar categoría reasignando productos,
+  aplicar una lista de precios) van en una transacción: pasan enteras o no pasan.
+  Eso reemplazó a la cola de escrituras que serializaba los accesos al archivo.
+
+**El buscador vive en la base.** `products.search_text` es una columna calculada
+que junta nombre, sku, descripción y marca en minúsculas y sin tildes, con un
+índice GIN de trigramas encima. Por eso escribir "latex" encuentra "Látex".
+
+> El detalle que costó: `unaccent()` viene marcada como `STABLE`, no `IMMUTABLE`,
+> y Postgres solo acepta funciones `IMMUTABLE` adentro de una columna calculada.
+> Hay que envolverla en una función propia (`public.immutable_unaccent`) que sí
+> lo declare. Es el atajo estándar y está comentado en la migración.
+
+### Seguridad de la base: RLS sin políticas
+
+Las tres tablas tienen **Row Level Security activo y CERO políticas**. Sin una
+política que lo permita, RLS niega todo: los roles `anon` y `authenticated` no
+pueden leer ni escribir nada.
+
+No es exceso de celo. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` viaja al navegador
+—eso significa el prefijo `NEXT_PUBLIC_`—. Si esa clave tuviera permiso de
+lectura sobre `products`, cualquiera podría copiarla del inspector y bajarse la
+tabla entera **con los precios adentro**, sin pasar por el login. El muro de
+precios de la sección 5 quedaría de adorno.
+
+La app entra por otro lado: la conexión directa de `DATABASE_URL`, que usa el
+dueño de las tablas y por eso no le aplica RLS. Esa cadena vive solo en el
+servidor, y `data-source.ts` y `db.ts` tienen `import "server-only"`, que hace
+fallar el build si alguien los arrastra a un componente de cliente.
+
+### Migraciones
+
+El esquema no se toca a mano desde el panel de Supabase: se escribe en un archivo
+de `supabase/migrations/` y se aplica con el CLI. Así el estado de la base es
+reproducible y queda versionado junto al código.
+
+```sh
+npm run db:status              # qué migraciones están aplicadas y cuáles no
+npm run db:new -- nombre_corto # crea un archivo nuevo, con fecha adelante
+npm run db:push                # aplica a la nube las que falten
+npm run db:check               # conteos, estado de RLS y prueba del buscador
 ```
 
-El resto de la app no cambia porque nunca importa `fs` ni los JSON.
+Las migraciones son **acumulativas y no se editan una vez aplicadas**: para
+cambiar algo se agrega una migración nueva. La fecha en el nombre es lo que fija
+el orden.
 
-### Persistencia en Vercel — advertencia
+`20260909120100_datos_iniciales.sql` es el catálogo que hasta acá vivía en los
+`.json`. Termina con dos `setval`: las filas traen su id escrito, así que sin eso
+las secuencias seguirían en cero y el primer alta desde el panel chocaría contra
+`p-001`.
 
-Los route handlers escriben con `fs` en el sistema de archivos. **En local funciona;
-en Vercel el filesystem es efímero y de solo lectura fuera de `/tmp`**: los cambios
-del panel se pierden en el siguiente deploy o incluso entre invocaciones. Esto se
-resuelve al migrar a Supabase (datos) + Supabase Storage o Vercel Blob (imágenes).
-Hasta entonces, el deploy en Vercel sirve para mostrar el catálogo, no para
-administrarlo.
+Los scripts se apoyan en `node --env-file=.env.local`, que carga las variables
+sin necesidad de la librería dotenv. Next lo hace solo al arrancar; un script
+suelto no.
+
+### Las fotos de producto: Supabase Storage
+
+Nada de la app escribe ya en el disco del servidor, y por eso el panel funciona
+entero en Vercel. El último caso que faltaba eran las imágenes.
+
+`/api/admin/upload` escribía con `fs` en `public/uploads/`. En una máquina
+propia anda; en Vercel no, porque cada deploy arma una copia nueva del sitio a
+partir del repositorio y el disco es de solo lectura fuera de `/tmp`. Las fotos
+subidas desde el panel duraban hasta el deploy siguiente.
+
+Hoy van a **Supabase Storage**, al bucket `productos`. La lógica está en
+`src/lib/storage.ts` y el permiso en la migración
+`20260911140000_storage_imagenes.sql`.
+
+- **El bucket es público en lectura.** Son fotos de catálogo: las ve cualquiera
+  que entre, igual que el nombre y el código del artículo. Lo que está detrás
+  del login son los precios, no las imágenes.
+- **Escribir es solo de admin.** Storage guarda un renglón por archivo en
+  `storage.objects`, que tiene RLS como cualquier tabla. Las tres políticas
+  (insert, update, delete) preguntan por `public.es_admin()`, una función
+  `security definer` que mira `profiles`. Un cliente con sesión no puede subir
+  ni borrar una foto.
+- **No hizo falta una credencial nueva.** El servidor sube con la sesión del
+  admin que está usando el panel, o sea con el mismo cliente de
+  `supabase/server.ts` que ya lee quién es. La clave secreta del proyecto sigue
+  sin usarse en ningún lado: una credencial que no existe no se puede filtrar.
+- **Las URLs que se guardan en `products.images` ahora son absolutas**
+  (`https://<proyecto>.supabase.co/storage/v1/object/public/productos/...`). Por
+  eso `next.config.ts` declara ese dominio en `images.remotePatterns`:
+  `next/image` solo optimiza imágenes de dominios declarados, para que nadie
+  use el servidor de imágenes del sitio para procesar fotos ajenas. El dominio
+  se deriva de `NEXT_PUBLIC_SUPABASE_URL`, no está escrito a mano.
+- El nombre del archivo lleva un sufijo único: dos personas subiendo `foto.jpg`
+  el mismo día pisarían una el archivo de la otra sin enterarse.
+
+`public/uploads/` quedó vacío y sin uso. Los paths viejos tipo `/uploads/x.jpg`
+que hubiera en la base siguen resolviendo en local, pero no se genera ninguno
+nuevo.
 
 ---
 
@@ -533,13 +751,13 @@ mensaje de WhatsApp.
 
 ## 5. Autenticación y muro de precios
 
-Hay **dos niveles**, con la misma cookie y el mismo mecanismo.
+Hay **dos niveles**, y las cuentas las maneja **Supabase Auth**.
 
-| Quién | Credenciales | Qué ve |
+| Quién | Cómo entra | Qué ve |
 | --- | --- | --- |
 | Visitante sin sesión | — | Catálogo completo: fotos, nombres, códigos, marcas, descripciones. **Sin precios y sin carrito.** En su lugar, botón "Consultar precio" que abre WhatsApp con el artículo ya escrito |
-| Cliente | `CLIENT_USER` / `CLIENT_PASSWORD` | Todo lo anterior **más** precios, carrito y checkout |
-| Admin | `ADMIN_USER` / `ADMIN_PASSWORD` | Todo lo del cliente **más** el panel `/admin` |
+| Cliente | email y contraseña | Todo lo anterior **más** precios, carrito y checkout |
+| Admin | email y contraseña | Todo lo del cliente **más** el panel `/admin` |
 
 Es el modelo habitual de un mayorista: la lista de precios es información
 comercial y no se muestra en la vía pública, pero el catálogo sí, porque es lo
@@ -552,6 +770,9 @@ Components**. Cuando `showPrices` es `false`, el precio **no se manda al
 navegador**: no está escondido con CSS, directamente no viaja en el HTML. Si
 estuviera oculto con `display:none` alcanzaría con abrir el inspector.
 
+> Comprobado sobre `/categoria/pinturas`: con sesión el HTML trae 1272 precios
+> con formato de pesos; sin sesión, cero.
+
 Los filtros también se sanean **en el servidor** con `withoutPriceFilters()`:
 si un anónimo escribe `?sort=precio-desc` a mano en la barra de direcciones, se
 ignora. Sin eso, aunque no viera los números, podría deducir de un vistazo cuál
@@ -559,45 +780,108 @@ es el artículo más caro del rubro.
 
 `/carrito` y `/checkout` los corta el proxy: sin precios no hay pedido posible.
 
+### Dónde vive cada cosa
+
+Esta app **no guarda contraseñas ni las ve nunca**. Lo único propio es el rol.
+
+| Qué | Dónde | Quién lo administra |
+| --- | --- | --- |
+| Cuentas, contraseñas, sesiones | `auth.users`, esquema de Supabase | Supabase Auth |
+| Rol (`admin` / `cliente`) y si está activa | `public.profiles` | Esta app, desde `/admin/usuarios` |
+
+Las dos tablas comparten el id, y un trigger (`on_auth_user_created`) crea el
+perfil solo en cuanto nace la cuenta. Así no existe una cuenta que pueda entrar
+pero no tenga rol. Está en la migración `20260909140000_perfiles.sql`.
+
+**Por qué el rol no va en la cuenta de Supabase.** Supabase permite colgarle
+datos propios a una cuenta (`app_metadata`), pero escribir ahí exige la **clave
+secreta** del proyecto. Una tabla nuestra se administra con la misma conexión a
+Postgres que ya usa el resto de la app, sin sumar una credencial más que
+cuidar.
+
 ### El mecanismo
 
-- Credenciales **solo por variables de entorno**. `src/config/site.ts` las lee
-  sin valor por defecto (`process.env.X ?? ""`), porque el repo es público y una
-  contraseña escrita en el código quedaría en el historial de git para siempre.
-- En local van en `.env.local` (ignorado por git); en Vercel, en *Project
-  Settings → Environment Variables*. Plantilla: `.env.example`.
-- Si falta alguna variable de un rol, ese login rechaza todo. Si no hay
-  ninguno configurado, **el catálogo sigue funcionando pero nadie ve precios**.
-  Es a propósito: entre "mostrarle la lista mayorista a todo el mundo por un
-  olvido" y "no mostrarle el precio a nadie", el segundo error se nota enseguida
-  y no hace daño.
-- El login (`loginAction`) compara contra los dos juegos de credenciales y setea
-  la cookie **httpOnly** `wiedmer_session` con un token = SHA-256 de
-  `rol:usuario:contraseña:secreto`. Al no guardar la contraseña en la cookie,
-  robarla no revela las credenciales. El `rol:` adelante importa: sin él, si
-  cliente y admin tuvieran las mismas credenciales, los dos tokens serían
-  idénticos y no se podrían distinguir.
-- `roleForSessionToken(cookie)` devuelve `"admin" | "cliente" | null`. Es la
-  función que usa toda la app para preguntar "¿quién es este?".
-- `src/proxy.ts` corre antes de resolver la página: si el rol no alcanza para la
-  ruta, redirige a `/login?next=<ruta>`. Protege `/admin/*`, `/api/admin/*`,
-  `/carrito` y `/checkout` (en las de API devuelve `401` en JSON en vez de
-  redirigir, porque un `fetch` no sabe qué hacer con una página de login).
+- El login (`loginAction`, en `src/app/actions/auth.ts`) le pasa el email y la
+  contraseña a Supabase, que responde si son válidas y deja la sesión en
+  cookies. Después se busca el perfil: si no existe o está inactivo, se deshace
+  la sesión recién creada.
+- Un solo mensaje de error para todos los motivos de rechazo —email que no
+  existe, contraseña equivocada, cuenta desactivada—. Si dijéramos "ese email no
+  está registrado", cualquiera podría ir probando direcciones hasta armar la
+  lista de las que sí existen, y recién entonces atacar las contraseñas.
+- `getSession()` (`src/lib/request-context.ts`) es la función que usa toda la app
+  para preguntar "¿quién es este?". Junta las dos mitades: quién es lo dice
+  Supabase, qué rol tiene lo dice `profiles`.
+  - Usa `getUser()` y no `getSession()` de Supabase. La diferencia importa:
+    `getSession()` se cree lo que dice la cookie, que el navegador puede haber
+    modificado; `getUser()` valida el token contra el servidor de Auth.
+  - Va envuelta en `cache()` de React. Una página pregunta por el visitante
+    varias veces —el header, el layout, cada ficha— y sin eso serían varios
+    viajes para responder siempre lo mismo.
+- `src/proxy.ts` corre antes de resolver la página. Hace tres cosas: renueva el
+  token si está por vencer, resuelve el idioma y corta el paso a `/admin/*`,
+  `/api/admin/*`, `/carrito`, `/checkout` y `/api/lista-precios`. En las de API
+  devuelve `401` en JSON en vez de redirigir, porque un `fetch` no sabe qué hacer
+  con una página de login.
   > Nombre: en Next 16 el archivo se llama `proxy.ts` y exporta `proxy()`. Hasta
   > Next 15 era `middleware.ts` / `middleware()`. Es exactamente lo mismo; si
   > leés un tutorial que dice "middleware", habla de este archivo.
 - El botón "Cerrar sesión" está en el header de la tienda y en el del panel.
-- El token se calcula con **Web Crypto** (`crypto.subtle`), que funciona tanto en
-  el runtime Edge del proxy como en Node.
+
+### Lo que el proxy no puede saber, y por qué no importa
+
+El proxy corre en Edge, que **no puede abrir una conexión a Postgres**. El rol
+vive en `profiles`, así que ahí es inalcanzable. Por eso el proxy responde una
+sola pregunta: **¿hay sesión o no?**.
+
+Para `/admin` eso solo saca a los anónimos. Que sea admin de verdad lo verifica
+`src/app/admin/layout.tsx`, que corre en Node, y cada endpoint de `/api/admin`.
+No se filtra nada: el layout redirige antes de renderizar una línea del panel.
+
+Y tiene una ventaja sobre el esquema anterior. Antes el rol viajaba firmado
+adentro de la cookie, o sea que era una foto del momento del login: bajar a
+alguien de admin a cliente no tenía efecto hasta que venciera la sesión. Ahora el
+rol se lee de la base en cada request, así que el cambio es inmediato.
+
+> El costo es una llamada al servidor de Auth por request **con sesión**. Un
+> visitante anónimo no paga nada: sin cookie, la librería contesta al instante
+> sin salir a la red. Medido: las rutas protegidas rechazan a un anónimo en 2 ms.
+
+### Restablecer contraseñas
+
+El panel **no puede** ponerle una contraseña a otra cuenta: para eso haría falta
+la clave secreta del proyecto. Y está bien que no pueda, porque la contraseña de
+una persona no debería pasar por las manos de otra.
+
+En su lugar manda un mail con un link de un solo uso, que aterriza en
+`/actualizar-password`. Esa página es la única del sitio que habla con Supabase
+**desde el navegador**, y no es un capricho: el token viene en el fragmento de la
+URL —la parte después del `#`— y los navegadores nunca mandan el fragmento al
+servidor. Es a propósito de Supabase: así el token no queda escrito en los
+registros del servidor.
+
+> ⚠️ El servidor de correo que Supabase trae por defecto manda muy pocos mails
+> por hora y **solo a integrantes del proyecto**. Para usarlo con clientes reales
+> hay que configurar un SMTP propio en el panel de Supabase.
+
+### El primer admin
+
+Para entrar al panel hay que ser admin, y alguien tiene que crear el primero.
+Ese es el único caso que se resuelve por terminal:
+
+```sh
+npm run db:usuario -- sofia@ejemplo.com admin
+```
+
+Pide la contraseña por teclado, sin mostrarla. Hace tres cosas: crea la cuenta en
+Supabase Auth, le confirma el email (el alta la hace alguien con acceso a la
+terminal del proyecto, no hace falta que espere un correo) y le pone el rol al
+perfil. Si el email ya tiene cuenta no falla: le corrige el rol y la reactiva,
+que es lo que hace falta cuando alguien se quedó afuera del panel.
 
 **Flag de catálogo privado:** `requireLoginForCatalog` en `src/config/site.ts`.
 Default `false`. En `true`, el proxy protege también el catálogo y no se ve
-absolutamente nada sin usuario.
-
-Las credenciales se leen en `src/config/site.ts` y no en `store-config.json`
-porque el proxy corre en el runtime Edge, donde no existe `fs`: no puede leer un
-archivo JSON. Las variables de entorno sí llegan al Edge.
-`store-config.json` queda para lo que sí se edita desde el panel.
+absolutamente nada sin sesión.
 
 ---
 
@@ -697,11 +981,50 @@ repetido dentro del archivo.
 Plantilla descargable: `/plantilla-precios.xlsx` (se regenera con
 `node scripts/generar-plantilla.mjs`).
 
+### La carga inicial del catálogo real
+
+El catálogo de muestra (33 artículos inventados, códigos tipo `ACC-2201`) se
+reemplazó por el listado real del proveedor: **1230 artículos con precio al
+28-05**. Lo hace `scripts/importar-lista.mjs`:
+
+```sh
+node --env-file=.env.local scripts/importar-lista.mjs --dry-run   # solo informa
+node --env-file=.env.local scripts/importar-lista.mjs             # respalda, borra e inserta
+MOSTRAR=200 node ... --dry-run                                    # lista más sin clasificar
+```
+
+No usa el flujo de `/admin/precios` porque ahí no hay nada que actualizar: los
+códigos del proveedor son numéricos y ninguno cruzaba con los de muestra. Y crea
+los productos **activos**, al revés que `updatePriceList()`, que da de alta los
+nuevos ocultos porque llegan sin foto: con 1230 el catálogo se habría visto
+vacío.
+
+Tres cosas que resolvió y conviene no volver a descubrir:
+
+1. **Las fracciones ¼ y ½ rompían el slug.** `slugify` borra todo lo que no sea
+   letra o número, así que `X ¼ LT.` y `X ½ LT.` daban el mismo slug y la
+   segunda variante terminaba en `-2`. Se escriben `1/4` y `1/2`, y los dígitos
+   sobreviven. Son 34 productos, todos variantes de tamaño del mismo artículo.
+2. **La categoría sale del nombre, no del código.** El rango de código no agrupa
+   nada: el 1400 mezcla tacos de madera con protectores para madera, y 489
+   artículos tienen código de 5 dígitos sin orden temático. Las reglas están en
+   la constante `REGLAS`, en orden, gana la primera que coincide. Quedan ~75 sin
+   categoría (6%): yeso, pastina y sueltos varios.
+3. **Se sumaron dos categorías**, `Cintas y Adhesivos` y
+   `Ferretería y Herramientas`, para lo que no entraba en las seis originales.
+   Sus ilustraciones de respaldo salen de
+   `scripts/generar-imagenes-categorias.mjs`, que tiene el dibujo de cada slug
+   escrito a mano: **si agregás una categoría, agregala también ahí**, porque la
+   home hace `src={category.image ?? ""}` y con `null` la ficha se rompe.
+
+El listado llega en PDF y el panel espera Excel; ese puente todavía se hace a
+mano. Ver la sección 9.
+
 ---
 
 ## 7. Checkout por WhatsApp
 
-El número destino sale de `store-config.json` → `whatsappNumber` (solo dígitos,
+El número destino sale de la tabla `store_config` → `whatsapp_number` (solo dígitos,
 con código de país y el `9` de Argentina: `5493416756969`). Se edita desde
 `/admin/configuracion`.
 
@@ -742,18 +1065,38 @@ fuera de React, mantiene el carrito sincronizado entre pestañas.
 
 ```sh
 npm install
-cp .env.example .env.local   # completar las 5 variables
+cp .env.example .env.local   # completar las variables
+npm run db:push              # crea las tablas y carga el catálogo
 npm run dev                  # http://localhost:3000
 ```
 
-Variables a completar: `CLIENT_USER`, `CLIENT_PASSWORD`, `ADMIN_USER`,
-`ADMIN_PASSWORD` y `SESSION_SECRET`.
-Para el `SESSION_SECRET`: `openssl rand -hex 32`.
+Variables a completar:
 
-Login (el mismo para los dos roles): http://localhost:3000/login
+| Variable | De dónde sale |
+| --- | --- |
+| `DIRECT_URL` | Supabase → Project Settings → Database → Connection string → **Session pooler (5432)**. Es la que usa la app |
+| `DATABASE_URL` | La misma pantalla → Transaction pooler (6543). Hoy no la usa nadie; ver el recuadro de la sección 3 |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | La misma pantalla. Es pública: viaja al navegador |
 
-El catálogo arranca sin `.env.local`, pero **sin precios**: sin credenciales
-configuradas no hay forma de destrabarlos.
+Las tres son **obligatorias**: sin base no arranca, y sin las de Supabase no
+hay login posible.
+
+Ya no hay credenciales en el `.env`: las cuentas viven en Supabase Auth. Para
+crear el primer admin:
+
+```sh
+npm run db:usuario -- tu@email.com admin
+```
+
+Login: http://localhost:3000/login
+
+Para verificar que la base quedó bien: `npm run db:check`.
+
+> El CLI de Supabase se instaló como dependencia de desarrollo, así que no hace
+> falta instalarlo aparte ni con Homebrew: `npm install` ya lo trae. Sí hace
+> falta Docker, pero **solo** para levantar una copia local de Supabase; para
+> aplicar migraciones contra la nube, que es lo que hacen estos scripts, no.
 
 Para probar el idioma inglés en local, cambiá el idioma preferido del navegador
 o usá el selector ES/EN del header.
@@ -761,33 +1104,55 @@ o usá el selector ES/EN del header.
 ### Deploy en Vercel
 
 1. Subir el repo a GitHub.
-2. En Vercel: *New Project* → importar el repo → cargar `CLIENT_USER`,
-   `CLIENT_PASSWORD`, `ADMIN_USER`, `ADMIN_PASSWORD` y `SESSION_SECRET` en
-   *Environment Variables* → *Deploy*.
-   Sin ellas el sitio funciona pero nadie ve precios ni puede entrar al panel.
+2. En Vercel: *New Project* → importar el repo → cargar en *Environment
+   Variables* `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL` y
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → *Deploy*.
+   Las tres son obligatorias: sin la primera el sitio no levanta, sin las otras
+   dos nadie puede iniciar sesión.
    La detección de idioma por país de IP **solo funciona en Vercel**: es Vercel
    quien agrega el header `x-vercel-ip-country`.
-3. Recordar la limitación de la sección 3: las escrituras del panel no persisten
-   en Vercel hasta migrar a Supabase.
+3. Las migraciones se aplican desde tu máquina con `npm run db:push`, no en el
+   build de Vercel. Es a propósito: que un deploy cambie el esquema solo es la
+   forma más rápida de romper producción sin darse cuenta.
+4. En Supabase → *Authentication* → *URL Configuration*, poner el dominio
+   nuevo como **Site URL** y agregar `https://<dominio>/actualizar-password` a
+   las **Redirect URLs**. Sin eso, el link de restablecer contraseña que llega
+   por mail apunta a `localhost`.
+
+**Dos archivos que ya están puestos:**
+
+- `vercel.json` fija la región de las funciones en `gru1` (São Paulo), que es
+  donde vive la base (`aws-0-sa-east-1`). Por defecto Vercel las pondría en
+  Washington y cada consulta cruzaría el continente dos veces. Si se muda el
+  proyecto de Supabase, hay que cambiar también este archivo.
+- `.vercelignore` deja afuera `imagenes/` (20 MB de originales), `remotion/`,
+  `supabase/` y `scripts/`: nada de eso participa del build. Solo interviene si
+  se deploya con el CLI; con la integración de GitHub manda `.gitignore`.
 
 ---
 
 ## 9. Pendientes / próximos pasos
 
-1. **Supabase** — reemplazar el cuerpo de `src/lib/data-source.ts` (tablas
-   `products`, `categories`, `store_config`). Todos los puntos están marcados con
-   `// TODO(supabase):`.
-2. **Imágenes** — mover `public/uploads/` a Supabase Storage o Vercel Blob.
-3. ~~**Credenciales**~~ — hecho: ya no hay valores por defecto en el código,
-   van por variables de entorno. Falta cargarlas en Vercel al deployar.
-4. **Persistencia de pedidos** — hoy el pedido solo viaja por WhatsApp; guardarlo
-   en una tabla `orders` para tener historial.
-5. **Precios mayorista/minorista** — hoy hay un solo precio y el corte es
+1. ~~**Supabase**~~ — hecho: los datos viven en Postgres. El esquema está en
+   `supabase/migrations/` y la conexión en `src/lib/db.ts`.
+2. ~~**Imágenes**~~ — hecho: las fotos de producto van a Supabase Storage
+   (bucket `productos`). Ya nada escribe en el filesystem del servidor.
+3. ~~**Credenciales**~~ — hecho: las cuentas las maneja Supabase Auth y el rol
+   vive en `public.profiles`. Ya no hay contraseñas en el código ni en el `.env`.
+4. **SMTP propio** — el correo que trae Supabase por defecto manda muy pocos
+   mails por hora y solo a integrantes del proyecto. Sin un SMTP configurado en
+   el panel de Supabase, el link de restablecer contraseña no le llega a un
+   cliente real.
+5. **Persistencia de pedidos** — hoy el pedido solo viaja por WhatsApp; guardarlo
+   en una tabla `orders` para tener historial. Ahora que hay base, es agregar una
+   migración y una función en `data-source.ts`.
+6. **Precios mayorista/minorista** — hoy hay un solo precio y el corte es
    "ve / no ve". El lugar donde se decide es `canSeePrices()` en
    `src/lib/auth.ts`: está en una función propia justamente para que el día que
    existan dos listas se cambie en un solo lugar.
-6. Imágenes reales de producto (hoy hay un placeholder con la marca).
-7. **Usar el video en el hero** — el `.mp4` ya está renderizado
+7. Imágenes reales de producto (hoy hay un placeholder con la marca).
+8. ~~**Borrar los `.json` viejos**~~ — hecho.
+9. **Usar el video en el hero** — el `.mp4` ya está renderizado
    (`public/video/hero-pintura.mp4`) pero la home sigue mostrando `HeroCanvas`.
    Falta decidir cuál queda: el canvas pesa ~6 KB y usa los azules de la marca;
    el video pesa 1,1 MB y es una escena real. Si gana el video, se reemplaza
@@ -795,7 +1160,18 @@ o usá el selector ES/EN del header.
    poster="/video/hero-pintura.jpg">` y hay que acordarse de dos cosas: en
    `prefers-reduced-motion` mostrar sólo el póster, y no ponerle `autoPlay` sin
    `muted` porque los navegadores lo bloquean.
-8. **SEO en inglés** — hoy el idioma va por cookie y Google indexa una sola
+10. **PDF del proveedor → Excel** — el listado mensual llega en PDF y
+   `/admin/precios` espera Excel. La conversión de la carga inicial se hizo a
+   mano. Para dejarlo repetible hace falta leer PDF desde Node: agregar
+   `pdfjs-dist` como dependencia de desarrollo y escribir
+   `scripts/pdf-a-excel.mjs`. Con eso, el mes que viene es convertir y subir el
+   archivo por el panel, que ya muestra la preview con los cambios y el
+   porcentaje.
+11. **Los 540 sin precio** — el PDF los lista en cero. Quedaron fuera de la
+    carga, en la hoja `sin-precio` de `lista-precios-2026-05-28.xlsx`. Ni ese
+    Excel ni el PDF del proveedor se versionan (`.gitignore`): son datos que
+    llegan cada mes, no código. Viven en la máquina donde se hizo la carga.
+12. **SEO en inglés** — hoy el idioma va por cookie y Google indexa una sola
    versión de cada URL. Si hace falta, migrar a rutas `/es/…` y `/en/…`.
 
 <!-- BEGIN:nextjs-agent-rules -->

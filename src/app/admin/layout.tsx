@@ -1,14 +1,26 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/actions/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WiedmerLogo } from "@/components/wiedmer-logo";
-import { getT, getTheme } from "@/lib/request-context";
+import { getUserById } from "@/lib/data-source";
+import { getSession, getT, getTheme } from "@/lib/request-context";
 
 /**
- * Layout del panel. El acceso ya está protegido por `src/proxy.ts`: si el
- * request llegó hasta acá, la sesión es válida.
+ * Layout del panel.
+ *
+ * `src/proxy.ts` ya verificó la firma de la cookie antes de llegar acá. Pero la
+ * cookie es una foto del momento del login: dice "u-001, admin" y sigue
+ * diciéndolo durante siete días, aunque mientras tanto a ese usuario lo hayan
+ * desactivado o bajado a cliente. El proxy no puede darse cuenta porque corre en
+ * Edge y no puede consultar Postgres.
+ *
+ * Acá sí se puede, y acá es donde importa: se vuelve a preguntar a la base si
+ * el usuario existe, sigue activo y sigue siendo admin. Es una consulta por
+ * navegación del panel —que lo usa una persona cada tanto, no el público— a
+ * cambio de que sacarle el acceso a alguien tenga efecto inmediato.
  *
  * `force-dynamic` por lo mismo que en la tienda: el panel siempre tiene que
  * mostrar el estado actual de los datos, nunca una versión cacheada.
@@ -16,6 +28,13 @@ import { getT, getTheme } from "@/lib/request-context";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  const session = await getSession();
+  const usuario = session ? await getUserById(session.userId) : null;
+
+  if (!usuario || !usuario.active || usuario.role !== "admin") {
+    redirect("/login?next=/admin");
+  }
+
   const [t, theme] = await Promise.all([getT(), getTheme()]);
 
   return (

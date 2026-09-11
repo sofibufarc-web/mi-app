@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { ColorSimulator } from "@/components/color-simulator";
 import { HeroCanvas } from "@/components/hero-canvas";
 import { PriceGateBanner } from "@/components/price-gate";
 import { Reveal } from "@/components/reveal";
+import { StoreMap } from "@/components/store-map";
 import { WiedmerMark } from "@/components/wiedmer-logo";
-import { getCategories, getProducts, getStoreConfig } from "@/lib/data-source";
+import { getCategories, getStoreConfig } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 
@@ -32,69 +34,79 @@ import { normalizeWhatsappNumber } from "@/lib/whatsapp";
  * layout de la tienda, no acá.
  */
 export default async function HomePage() {
-  const [config, categories, allProducts, viewer] = await Promise.all([
+  const [config, categories, viewer] = await Promise.all([
     getStoreConfig(),
     getCategories(),
-    getProducts({ onlyActive: true }),
     getViewer(),
   ]);
   const { t, showPrices } = viewer;
 
   const whatsappUrl = `https://wa.me/${normalizeWhatsappNumber(config.whatsappNumber)}`;
 
-  // Los números salen de los datos reales, no están escritos a mano: así no
-  // quedan desactualizados cuando se cargan productos nuevos.
-  const stats = [
-    { value: `${allProducts.length}+`, label: t.hero.stats.products },
-    { value: String(t.about.coverage.length), label: t.hero.stats.provinces },
-    { value: "1×", label: t.hero.stats.delivery },
-  ];
-
-
   return (
     <>
       {/* ================= HERO ================= */}
       {/*
-        Una sola foto, a todo el ancho y de poca altura: es una franja de
-        presentación, no una portada que se coma la pantalla. Quien entra ve
-        enseguida qué hay abajo y no tiene que scrollear para empezar.
+        Hero partido en dos columnas y más alto que antes:
 
-        `min-h` y no `h`: fija un piso pero deja crecer. En un celular angosto
-        el título ocupa tres renglones y, con altura fija, el texto se saldría
-        de la foto.
+        - IZQUIERDA: la foto. En reposo está quieta; al pasar el mouse hace un
+          acercamiento lento y una banda de color de marca la recorre en
+          diagonal. Es un adorno de escritorio: en el celular no hay "pasar el
+          mouse", así que ahí se ve la foto fija, que es lo correcto.
+        - DERECHA: el texto sobre un panel azul oscuro (`brand-darker`), el
+          mismo azul del pie de página. Separar el texto de la foto lo hace más
+          legible que encimarlo, y de paso el título "Distribuidora Wiedmer"
+          pega más fuerte sobre un fondo plano.
+
+        En el celular las dos columnas se apilan (foto arriba, texto abajo)
+        porque `lg:grid-cols-2` solo divide en pantallas grandes.
+
+        `min-h` y no `h`: fija un piso pero deja crecer, para que el texto nunca
+        se corte en una pantalla angosta.
       */}
-      <section className="relative isolate flex min-h-[19rem] items-center overflow-hidden bg-black text-white sm:min-h-[21rem] lg:min-h-[23rem]">
-        <Image
-          src="/img/hero.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          // `priority` = cargala antes que nada. Es lo primero que se ve al
-          // entrar; sin esto el navegador la trata como una imagen más y el
-          // hero aparece negro por un instante.
-          priority
-          className="object-cover"
-        />
-
+      <section className="relative isolate grid min-h-[32rem] overflow-hidden bg-brand-darker text-white lg:min-h-[36rem] lg:grid-cols-2">
         {/*
-          Dos velos negros encima de la foto. No son decoración: sin ellos el
-          texto blanco competiría con los brillos del metal y la pintura.
-
-          - El primero es parejo y baja el protagonismo de la foto entera.
-          - El segundo es un degradado de izquierda a derecha: oscurece fuerte
-            el lado del texto y deja respirar el chorro de pintura, que es lo
-            que se quiere ver.
+          `group` en el contenedor de la foto es lo que engancha el hover: las
+          clases `group-hover:` de la imagen y de la banda reaccionan cuando el
+          mouse entra en CUALQUIER parte de este bloque, no solo sobre el pixel
+          justo debajo del cursor.
         */}
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
+        <div className="group relative min-h-[18rem] overflow-hidden lg:min-h-full">
+          <Image
+            src="/img/hero.webp"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            // `priority` = cargala antes que nada. Es lo primero que se ve al
+            // entrar; sin esto el hero aparece oscuro por un instante.
+            priority
+            // El zoom: la foto crece de 1 a 1.1 en 700 ms al pasar el mouse.
+            // `motion-reduce:transform-none` lo anula para quien pidió menos
+            // movimiento (mareos), sin sacar la foto.
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 motion-reduce:transform-none"
+          />
 
-        <div className="container-wiedmer relative z-10 py-14 sm:py-16">
+          {/* Velo suave: liga la foto con el azul de la marca. */}
+          <div className="absolute inset-0 bg-brand-darker/25" />
+
+          {/*
+            La "pasada de color": una banda diagonal de azul de marca que en
+            reposo está escondida a la izquierda (`-translate-x-full`) y al pasar
+            el mouse cruza hacia la derecha (`group-hover:translate-x-full`).
+            `pointer-events-none` para que no robe el hover; `motion-reduce:hidden`
+            para que directamente no exista si se pidió menos movimiento.
+          */}
+          <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-tr from-transparent via-brand/50 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full motion-reduce:hidden" />
+        </div>
+
+        {/* DERECHA: el texto. */}
+        <div className="relative flex items-center px-6 py-16 sm:px-10 lg:px-14">
           <div className="max-w-xl">
             <p className="animate-fade-up text-xs font-bold uppercase tracking-[0.3em] text-sky-300">
               {t.hero.eyebrow}
             </p>
 
-            <h1 className="mt-4 animate-fade-up text-4xl font-bold leading-[1.05] tracking-tight [animation-delay:120ms] sm:text-5xl">
+            <h1 className="mt-4 animate-fade-up text-4xl font-bold leading-[1.05] tracking-tight [animation-delay:120ms] sm:text-5xl lg:text-6xl">
               {t.hero.title}{" "}
               <span className="bg-gradient-to-r from-sky-300 to-white bg-clip-text text-transparent">
                 {t.hero.titleAccent}
@@ -129,27 +141,6 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-      </section>
-
-      {/* ================= NÚMEROS ================= */}
-      {/*
-        Los números salían adentro del hero. Ahí obligaban a que la foto fuera
-        alta; acá, en una franja propia y baja, se leen igual y el hero queda
-        corto. Los valores salen de los datos reales, no están escritos a mano.
-      */}
-      <section className="border-b border-line bg-surface">
-        <dl className="container-wiedmer grid grid-cols-3 gap-4 py-6">
-          {stats.map((stat) => (
-            <div key={stat.label} className="text-center sm:text-left">
-              <dt className="text-2xl font-bold tracking-tight text-brand sm:text-3xl">
-                {stat.value}
-              </dt>
-              <dd className="mt-1 text-[0.7rem] uppercase tracking-wider text-ink-soft sm:text-xs">
-                {stat.label}
-              </dd>
-            </div>
-          ))}
-        </dl>
       </section>
 
       {/* ================= ACCESOS ================= */}
@@ -239,7 +230,13 @@ export default async function HomePage() {
           </p>
         </Reveal>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/*
+          En el celular van en DOS columnas, no en una sola tira. Una grilla de
+          fichas con foto se lee como un catálogo y "se destaca"; una columna
+          larga se lee como una lista y se scrollea sin mirar. `grid-cols-2` es
+          el piso; en tablet siguen dos y en escritorio pasan a tres.
+        */}
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {categories.map((category, index) => (
             <Reveal key={category.id} delay={(index % 3) * 90} className="h-full">
               {/*
@@ -260,7 +257,7 @@ export default async function HomePage() {
                     src={category.image ?? ""}
                     alt=""
                     fill
-                    sizes="(min-width: 1024px) 32vw, (min-width: 640px) 47vw, 94vw"
+                    sizes="(min-width: 1024px) 32vw, 47vw"
                     className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110"
                   />
 
@@ -269,8 +266,8 @@ export default async function HomePage() {
                   <div className="absolute inset-0 bg-brand-darker/15 transition-colors duration-500 group-hover:bg-brand-darker/30" />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/45 to-transparent" />
 
-                  <div className="absolute inset-x-0 bottom-0 p-5">
-                    <h3 className="text-xl font-bold tracking-tight text-white drop-shadow-sm">
+                  <div className="absolute inset-x-0 bottom-0 p-3 sm:p-5">
+                    <h3 className="text-base font-bold leading-tight tracking-tight text-white drop-shadow-sm sm:text-lg lg:text-xl">
                       {category.name}
                     </h3>
 
@@ -290,7 +287,7 @@ export default async function HomePage() {
                       </div>
                     )}
 
-                    <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-sky-300">
+                    <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300 sm:mt-3 sm:text-sm">
                       {t.homeCategories.seeProducts}
                       <svg
                         aria-hidden
@@ -310,6 +307,42 @@ export default async function HomePage() {
               </Link>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      {/* ================= SIMULADOR DE COLOR ================= */}
+      {/*
+        Va DESPUÉS de las categorías, no antes. El visitante que llega a un
+        mayorista viene a buscar un rubro; primero se le da eso y recién después
+        el simulador, que además lo devuelve al catálogo por su propio botón.
+        Arriba se comería el lugar de lo que la gente vino a hacer.
+
+        Lo ve cualquiera, con o sin sesión: no muestra ni un precio.
+      */}
+      <section className="border-y border-line bg-surface py-20">
+        <div className="container-wiedmer">
+          <Reveal>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand">
+              {t.simulator.eyebrow}
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              {t.simulator.title}
+            </h2>
+            <p className="mt-3 max-w-2xl text-ink-soft">{t.simulator.subtitle}</p>
+          </Reveal>
+
+          {/*
+            La tarjeta NO va envuelta en <Reveal>, a diferencia del resto de la
+            home. `Reveal` arranca en `opacity: 0` y destapa por JavaScript
+            cuando el elemento entra en pantalla. Para un texto es una mejora:
+            si algo falla, se ve igual apenas un poco más tarde. Para un bloque
+            con botones, si el observer no dispara no queda "sin animar": queda
+            un agujero en blanco donde debería haber controles. Un elemento
+            interactivo no se esconde por defecto.
+          */}
+          <div className="mt-10">
+            <ColorSimulator t={t.simulator} />
+          </div>
         </div>
       </section>
 
@@ -367,6 +400,32 @@ export default async function HomePage() {
               </div>
             </div>
           </Reveal>
+        </div>
+
+        {/* --- Mapa del local --- */}
+        {/*
+          El mapa NO va envuelto en <Reveal>. `Reveal` arranca invisible y se
+          destapa por JavaScript al entrar en pantalla; para un texto es una
+          mejora inofensiva, pero un mapa que ya trae su propio JavaScript no
+          conviene esconderlo de entrada. Si algo fallara, quedaría un hueco en
+          blanco en vez del mapa.
+        */}
+        <div className="mt-20">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand">
+            {t.storeMap.eyebrow}
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            {t.storeMap.title}
+          </h2>
+          <div className="mt-8">
+            <StoreMap
+              storeName={config.storeName}
+              address={config.contact.address}
+              phone={config.contact.phone}
+              hours={config.contact.hours}
+              t={t.storeMap}
+            />
+          </div>
         </div>
 
         {/* --- Por qué Wiedmer --- */}

@@ -257,6 +257,58 @@ input[type="number"] {
 }
 
 /*
+ * Las dos animaciones del simulador de color de la home.
+ *
+ * Las dos se disparan UNA sola vez, cuando se elige un color, y las dos usan el
+ * mismo truco para volver a arrancar en cada cambio: el elemento que las lleva
+ * tiene `key={color}` en React, así que al cambiar el color React monta un
+ * elemento nuevo y la animación empieza de cero. Sin eso, la primera pasada se
+ * vería y las siguientes no, porque para el navegador sería la misma animación
+ * ya terminada.
+ */
+
+/*
+ * Pasada de rodillo: una banda de luz que cruza la pared en diagonal.
+ *
+ * No pinta nada (el color ya lo cambió el `fill` del SVG): lo que hace es dar
+ * la sensación de que algo pasó por encima, que es lo que convierte un cambio
+ * de color instantáneo en un gesto de pintar.
+ */
+@keyframes wiedmer-roller {
+  from {
+    transform: translateX(-60%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(160%);
+    opacity: 0;
+  }
+}
+
+/* Nube de aerosol: nace chica y concentrada, se abre y se desvanece. */
+@keyframes wiedmer-spray {
+  from {
+    transform: scale(0.25);
+    opacity: 0.75;
+  }
+  to {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@utility animate-roller {
+  animation: wiedmer-roller 1s var(--ease-out-soft) both;
+}
+
+@utility animate-spray {
+  animation: wiedmer-spray 0.85s var(--ease-out-soft) both;
+}
+
+/*
  * Ken Burns: la foto entra grande y ligeramente corrida, y durante toda la
  * placa se va acomodando. Es el recurso con el que los documentales le dan
  * movimiento a una foto fija; acá es lo que hace que el carrusel se lea como
@@ -325,5 +377,53 @@ input[type="number"] {
   .reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mapa del local (Leaflet)                                                    */
+/* -------------------------------------------------------------------------- */
+/*
+ * El pin: un componente de Leaflet no acepta clases de Tailwind directas
+ * (lo dibuja la librería, no React), así que su estilo va acá, a mano.
+ * Es la gota clásica de mapa: un círculo con la punta hacia abajo, en azul
+ * de marca, con un punto blanco en el centro.
+ */
+.store-map-pin {
+  position: relative;
+  display: block;
+  width: 28px;
+  height: 28px;
+  background: var(--color-brand);
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.store-map-pin::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+/*
+ * En modo noche las imágenes del mapa (que son claras) se invierten para que
+ * el mapa acompañe al resto del sitio en vez de ser un rectángulo blanco.
+ * El filtro toca SOLO la capa de imágenes; el pin y el globo de datos viven en
+ * otras capas y quedan intactos. Se escribe dos veces por la misma razón que el
+ * resto de los tokens: una para el modo noche elegido a mano y otra para el del
+ * sistema operativo.
+ */
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
   }
 }

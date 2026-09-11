@@ -72,6 +72,20 @@ const ilustraciones = {
   <rect x="60" y="168" width="280" height="26" rx="6" fill="${BRAND}"/>
   <rect x="60" y="202" width="280" height="26" rx="6" fill="${BRAND}" opacity=".65"/>
   <path d="M70 252q22-22 44 0t44 0 44 0 44 0 44 0" stroke="${BRAND_DARK}" stroke-width="10" fill="none" stroke-linecap="round"/>`),
+
+  // Rollo de cinta con la punta despegada
+  "cintas-y-adhesivos": canvas(`
+  <circle cx="170" cy="170" r="92" fill="${BRAND}"/>
+  <circle cx="170" cy="170" r="38" fill="${SURFACE}"/>
+  <circle cx="170" cy="170" r="66" fill="#fff" opacity=".25"/>
+  <path d="M248 122 356 66l16 30-108 56z" fill="${BRAND_DARK}"/>`),
+
+  // Martillo y tuerca
+  "ferreteria-y-herramientas": canvas(`
+  <rect x="150" y="120" width="28" height="150" rx="10" fill="${BRAND_DARK}"/>
+  <path d="M96 60h96a18 18 0 0 1 18 18v34a18 18 0 0 1-18 18H96l22-35z" fill="${BRAND}"/>
+  <path d="M300 150l39 22v46l-39 22-39-22v-46z" fill="${BRAND}"/>
+  <circle cx="300" cy="195" r="17" fill="${SURFACE}"/>`),
 };
 
 await mkdir(OUT_DIR, { recursive: true });

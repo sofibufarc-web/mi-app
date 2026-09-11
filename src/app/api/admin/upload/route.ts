@@ -1,41 +1,26 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 
 import { siteConfig } from "@/config/site";
-import { slugify } from "@/lib/slug";
+import { subirImagen } from "@/lib/storage";
 
 /**
  * POST /api/admin/upload — sube imágenes de producto.
  *
  * Recibe un FormData con uno o varios archivos en el campo `files` y devuelve
- * los paths públicos: { paths: ["/uploads/rodillo-lana-1737031234-a1b2.jpg"] }.
+ * las URLs públicas:
+ * `{ paths: ["https://<proyecto>.supabase.co/storage/v1/object/public/productos/rodillo-lana-x9f2.jpg"] }`.
  *
- * La ruta está bajo /api/admin, así que `src/proxy.ts` ya exige sesión.
+ * La ruta está bajo /api/admin, así que `src/proxy.ts` ya exige sesión, y las
+ * políticas de Storage exigen además que esa sesión sea de un admin activo.
  *
- * ⚠️ VERCEL: escribe en `public/uploads`, que allá es efímero. En local anda
- * bien; en producción hay que migrar a Supabase Storage o Vercel Blob.
+ * Los archivos van a **Supabase Storage** (ver `src/lib/storage.ts`). Antes se
+ * escribían en `public/uploads/`, que funcionaba en una máquina propia pero no
+ * en Vercel, donde el disco se descarta en cada deploy.
  *
  * Un "Route Handler" es un endpoint HTTP común. Lo usamos en vez de una Server
  * Action porque el uploader necesita subir los archivos ANTES de guardar el
  * producto, para poder mostrar la vista previa y dejar reordenar.
  */
-
-/**
- * Los segmentos van escritos como literales a propósito. Si armáramos la ruta
- * con una variable, el bundler no puede saber a qué carpeta apunta y termina
- * copiando todo el proyecto (incluido /public) dentro del deploy.
- */
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
-
-/** Nombre de archivo seguro y único: sin espacios, sin acentos, sin colisiones. */
-function safeFileName(original: string): string {
-  const ext = path.extname(original).toLowerCase() || ".jpg";
-  const base = slugify(path.basename(original, path.extname(original))) || "imagen";
-  const unique = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  return `${base.slice(0, 40)}-${unique}${ext}`;
-}
-
 export async function POST(request: Request) {
   let formData: FormData;
   try {
@@ -55,7 +40,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No mandaste ninguna imagen." }, { status: 400 });
   }
 
-  // Validamos TODO antes de escribir nada, para no dejar archivos a medias.
+  // Validamos TODO antes de subir nada, para no dejar la mitad de las fotos
+  // arriba y la otra mitad no.
   for (const file of files) {
     if (!(siteConfig.uploads.allowedTypes as readonly string[]).includes(file.type)) {
       return NextResponse.json(
@@ -74,16 +60,15 @@ export async function POST(request: Request) {
     }
   }
 
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-
   const paths: string[] = [];
   for (const file of files) {
-    const fileName = safeFileName(file.name);
-    // `arrayBuffer()` trae el archivo entero a memoria. Está bien para imágenes
-    // de hasta 5 MB; para archivos grandes se usaría un stream.
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(UPLOAD_DIR, fileName), buffer);
-    paths.push(`${siteConfig.uploads.publicPath}/${fileName}`);
+    const resultado = await subirImagen(file);
+    if ("error" in resultado) {
+      // Si una falla, devolvemos las que ya subieron igual: el uploader las
+      // agrega a la lista y el usuario reintenta solo con la que faltó.
+      return NextResponse.json({ error: resultado.error, paths }, { status: 502 });
+    }
+    paths.push(resultado.url);
   }
 
   return NextResponse.json({ paths });

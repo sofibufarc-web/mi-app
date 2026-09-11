@@ -1,57 +1,39 @@
 /**
  * Configuración ESTÁTICA de la app.
  *
- * Ojo con la diferencia:
- * - Este archivo (`src/config/site.ts`) tiene cosas que NO se editan desde el
- *   panel: credenciales, secreto de sesión, flags de comportamiento. Es un .ts
- *   común, sin `fs`, así que se puede importar desde el proxy (que corre en el
- *   runtime Edge, donde `fs` no existe).
- * - `src/data/store-config.json` tiene lo que SÍ se edita desde el panel:
- *   nombre de la tienda, WhatsApp, textos, contacto, colores.
+ * Ojo con la diferencia entre los tres lugares donde hay configuración:
  *
- * Casi todo acá tiene un valor por defecto, así que la app arranca sin `.env`.
+ * - Este archivo (`src/config/site.ts`): lo que NO se edita desde ningún lado,
+ *   porque cambiarlo es cambiar el comportamiento del código. Es un .ts común,
+ *   sin acceso a la base, así que se puede importar desde el proxy (que corre en
+ *   el runtime Edge, donde no se puede abrir una conexión a Postgres).
+ * - La tabla `store_config`: lo que se edita desde `/admin/configuracion`
+ *   (nombre de la tienda, WhatsApp, textos, contacto, colores). Se lee con
+ *   `getStoreConfig()` de `src/lib/data-source.ts`.
+ * - **Supabase Auth**: quién puede entrar. Las cuentas y las contraseñas las
+ *   guarda Supabase; el rol vive en la tabla `profiles`. Se administra desde
+ *   `/admin/usuarios`.
  *
- * EXCEPCIÓN: las credenciales NO tienen valor por defecto. Se leen solo de
- * variables de entorno, porque este archivo se sube al repositorio y una
- * contraseña escrita acá quedaría pública y en el historial de git para
- * siempre.
- *
- * Para desarrollo local: copiá `.env.example` a `.env.local` y completalas.
- * `.env.local` está ignorado por git.
+ * **Ya no hay credenciales ni secretos acá.** Hubo dos etapas antes de esto: el
+ * login comparaba contra CLIENT_USER / CLIENT_PASSWORD / ADMIN_USER /
+ * ADMIN_PASSWORD, y después contra una tabla propia con contraseñas hasheadas a
+ * mano. Hoy nada de eso existe: de las sesiones se ocupa Supabase Auth, con sus
+ * propios tokens. `SESSION_SECRET` también quedó sin uso.
  */
 
 export const siteConfig = {
   /**
-   * DOS niveles de acceso, con la misma cookie y el mismo mecanismo:
+   * DOS niveles de acceso. El rol es una columna de la tabla `profiles`:
    *
-   * - `client`: el login genérico que se le da a los comercios. Habilita ver
-   *   los precios y armar pedidos. Es el mismo usuario y contraseña para
-   *   todos los clientes.
-   * - `admin`: el login del panel `/admin`. Incluye todo lo del cliente.
+   * - `cliente`: habilita ver los precios y armar pedidos.
+   * - `admin`: todo lo del cliente MÁS el panel `/admin`.
    *
-   * Quien entra sin ninguno de los dos ve el catálogo completo (fotos,
-   * nombres, códigos, descripciones) pero sin precios y sin carrito.
+   * Quien entra sin sesión ve el catálogo completo (fotos, nombres, códigos,
+   * descripciones) pero sin precios y sin carrito.
+   *
+   * Las dos reglas que deciden qué puede hacer cada rol están en
+   * `canSeePrices()` y `canManageStore()`, en `src/lib/auth.ts`.
    */
-  auth: {
-    client: {
-      user: process.env.CLIENT_USER ?? "",
-      password: process.env.CLIENT_PASSWORD ?? "",
-    },
-    admin: {
-      user: process.env.ADMIN_USER ?? "",
-      password: process.env.ADMIN_PASSWORD ?? "",
-    },
-    /**
-     * Sal para hashear el token de sesión. Cualquier cadena larga y aleatoria.
-     * Si se filtra, alguien puede fabricar una cookie de sesión válida sin
-     * saber la contraseña, así que se trata como un secreto más.
-     */
-    sessionSecret: process.env.SESSION_SECRET ?? "",
-    /** Nombre de la cookie httpOnly de sesión. */
-    cookieName: "wiedmer_session",
-    /** Duración de la sesión: 7 días, en segundos. */
-    maxAge: 60 * 60 * 24 * 7,
-  },
 
   /**
    * false (default) = el catálogo se ve sin iniciar sesión (pero sin precios).
@@ -63,13 +45,19 @@ export const siteConfig = {
   /** Cookie donde se guarda el tema elegido. Ausente = "el del sistema". */
   themeCookie: "wiedmer_theme",
 
-  /** Límites de la subida de imágenes desde el panel. */
+  /**
+   * Límites de la subida de imágenes desde el panel.
+   *
+   * Los archivos van a Supabase Storage, al bucket `productos`
+   * (ver `src/lib/storage.ts`). Ya no se escribe nada en `public/uploads/`:
+   * en Vercel el disco se descarta en cada deploy.
+   *
+   * Estos dos límites están repetidos en el bucket, en la migración
+   * `20260911140000_storage_imagenes.sql`. Si cambiás uno, cambiá el otro.
+   */
   uploads: {
     maxSizeBytes: 5 * 1024 * 1024, // 5 MB
     allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"],
-    /** Carpeta pública donde se guardan. Ver la advertencia de Vercel en CLAUDE.md. */
-    dir: "public/uploads",
-    publicPath: "/uploads",
   },
 
   /** Límites de la carga de lista de precios. */
@@ -79,36 +67,14 @@ export const siteConfig = {
   },
 } as const;
 
-/** Los dos roles posibles. `null` = visitante sin sesión. */
-export type Role = "cliente" | "admin";
-
 /**
- * ¿Está configurado el login del panel?
+ * Los dos roles posibles. `null` = visitante sin sesión.
  *
- * Se usa para no dejar el panel abierto por accidente: si falta alguna
- * variable, el login rechaza cualquier intento en vez de aceptar vacíos.
+ * La definición vive en `src/data/types.ts`, junto al resto del modelo, porque
+ * ahora el rol es una columna de la tabla `users`. Se reexporta acá para no
+ * romper los archivos que ya lo importaban de este lugar.
  */
-export function adminAuthIsConfigured(): boolean {
-  const { admin, sessionSecret } = siteConfig.auth;
-  return admin.user !== "" && admin.password !== "" && sessionSecret !== "";
-}
-
-/** ¿Está configurado el login de clientes (el que destraba los precios)? */
-export function clientAuthIsConfigured(): boolean {
-  const { client, sessionSecret } = siteConfig.auth;
-  return client.user !== "" && client.password !== "" && sessionSecret !== "";
-}
-
-/**
- * ¿Hay alguna forma de iniciar sesión?
- *
- * Si no hay ninguna, el sitio funciona igual pero sin precios para nadie. Es a
- * propósito: preferimos que se note enseguida que falta configurar algo antes
- * que mostrarle la lista mayorista a todo el mundo por un olvido.
- */
-export function anyAuthIsConfigured(): boolean {
-  return adminAuthIsConfigured() || clientAuthIsConfigured();
-}
+export type { Role } from "@/data/types";
 
 /** Clave del carrito en localStorage. Versionada por si cambia la forma del dato. */
 export const CART_STORAGE_KEY = "wiedmer_cart_v1";

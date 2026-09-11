@@ -1,0 +1,27 @@
+# Qué NO hace falta subir a Vercel.
+#
+# Aplica cuando se deploya con el CLI (`vercel deploy`), que empaqueta la
+# carpeta y la manda. Con la integración de GitHub, Vercel clona el repo y este
+# archivo no interviene: ahí lo que manda es .gitignore.
+#
+# Nada de esto participa del build del sitio: son los originales pesados y las
+# herramientas que se corren a mano desde la máquina.
+
+# Fotos originales sin comprimir (~20 MB). Lo que sirve el sitio son los .webp
+# de public/img/, generados con scripts/optimizar-imagenes.mjs.
+imagenes/
+
+# El video del hero se renderiza a mano y se versiona ya hecho en public/video/.
+# Remotion no corre en el deploy.
+remotion/
+remotion.config.ts
+
+# Las migraciones se aplican desde tu máquina con `npm run db:push`, nunca en
+# el build. Ver el punto 3 de "Deploy en Vercel" en el README.
+supabase/
+
+# Scripts de mantenimiento: se corren en tu terminal, no en el servidor.
+scripts/
+
+# Listados del proveedor, material de trabajo.
+lista-precios-*.xlsx

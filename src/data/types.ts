@@ -65,6 +65,29 @@ export type StoreConfig = {
   };
 };
 
+/**
+ * Un usuario que puede iniciar sesión. Vive en la tabla `users`.
+ *
+ * Ojo con lo que NO está acá: el hash de la contraseña. Este tipo es el que
+ * viaja al panel, y lo que no está en el tipo no se puede mandar sin querer al
+ * navegador. El login usa un tipo aparte (`UserWithHash`, interno de
+ * `src/lib/data-source.ts`) que sí lo trae.
+ */
+export type AppUser = {
+  /** UUID de la cuenta en Supabase Auth. Es el mismo id de `public.profiles`. */
+  id: string;
+  /** Supabase Auth identifica por email, no por nombre de usuario. */
+  email: string;
+  role: Role;
+  /** false = la cuenta existe pero no puede entrar. */
+  active: boolean;
+  createdAt: string;       // ISO
+  updatedAt: string;       // ISO
+};
+
+/** Los dos roles posibles. Se define acá porque es parte del modelo de datos. */
+export type Role = "cliente" | "admin";
+
 /** Una línea del carrito. Se guarda en localStorage, por eso es plana. */
 export type CartItem = {
   productId: string;

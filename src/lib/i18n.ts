@@ -63,8 +63,8 @@ const es = {
 
   hero: {
     eyebrow: "Importación directa · Reparto propio",
-    title: "Wiedmer",
-    titleAccent: "Mayorista",
+    title: "Distribuidora",
+    titleAccent: "Wiedmer",
     subtitle:
       "Catálogo completo para pinturerías y ferreterías, con la lista de precios actualizada a un solo clic.",
     ctaPrimary: "Ver el catálogo",
@@ -120,6 +120,31 @@ const es = {
         text: "La lista se actualiza permanentemente y la descargás cuando querés, en Excel.",
       },
     ],
+  },
+
+  /**
+   * Simulador de color de la home.
+   *
+   * Los NOMBRES de los colores no están acá: viven en `src/data/paint-colors.ts`
+   * y no se traducen, por lo mismo que no se traduce el nombre de un producto.
+   * Acá está solo la interfaz que los rodea.
+   */
+  simulator: {
+    eyebrow: "Probalo antes de comprar",
+    title: "Mirá cómo queda",
+    subtitle:
+      "Elegí un color y miralo aplicado. Sirve para mostrarle al cliente en el mostrador por qué un tono le va a cerrar y otro no.",
+    surfaceLabel: "Qué querés pintar",
+    wall: "Una pared",
+    spray: "Una reja",
+    paletteLabel: "Elegí un color",
+    /** Se le pega el nombre del color: "Pared pintada de Terracota". */
+    sceneWall: "Pared pintada de",
+    sceneSpray: "Reja pintada de",
+    ctaWall: "Ver pinturas",
+    ctaSpray: "Ver aerosoles",
+    disclaimer:
+      "Los colores en pantalla son orientativos. El tono final cambia con la luz del ambiente, la mano de fondo y el brillo del acabado.",
   },
 
   /** Los tres accesos rápidos de la home. Dos se destraban con la sesión. */
@@ -208,6 +233,12 @@ const es = {
       "Escribinos por WhatsApp y te pasamos la lista completa con las condiciones para comercios.",
     button: "Escribinos por WhatsApp",
     hours: "Atendemos de lunes a viernes de 8 a 17 h.",
+  },
+
+  storeMap: {
+    eyebrow: "Dónde estamos",
+    title: "Pasá por el depósito",
+    howToGet: "Cómo llegar",
   },
 
   product: {
@@ -307,15 +338,17 @@ const es = {
 
   login: {
     title: "Ingresar",
-    subtitle: "Usá el usuario y la contraseña que te dio tu vendedor.",
-    user: "Usuario",
+    subtitle: "Usá el email y la contraseña que te dio tu vendedor.",
+    email: "Email",
     password: "Contraseña",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
     submit: "Ingresar",
     submitting: "Ingresando…",
     back: "Volver al catálogo",
-    error: "Usuario o contraseña incorrectos.",
+    error: "Email o contraseña incorrectos.",
     notConfigured:
-      "El acceso no está configurado. Faltan las variables de entorno.",
+      "El acceso no está configurado. Faltan las variables de Supabase.",
     whyTitle: "¿Para qué sirve?",
     whyText:
       "El catálogo se puede ver sin cuenta, pero los precios y el armado de pedidos son solo para clientes.",
@@ -372,7 +405,7 @@ const en = {
   hero: {
     eyebrow: "Direct imports · Own delivery fleet",
     title: "Wiedmer",
-    titleAccent: "Wholesale",
+    titleAccent: "Distributor",
     subtitle:
       "The full catalog for paint and hardware stores, with the price list kept up to date a single click away.",
     ctaPrimary: "Browse the catalog",
@@ -422,6 +455,23 @@ const en = {
         text: "The list is kept current and you can download it as a spreadsheet whenever you want.",
       },
     ],
+  },
+
+  simulator: {
+    eyebrow: "Try before you buy",
+    title: "See how it looks",
+    subtitle:
+      "Pick a color and see it applied. Handy for showing a customer at the counter why one shade works and another doesn't.",
+    surfaceLabel: "What do you want to paint",
+    wall: "A wall",
+    spray: "A railing",
+    paletteLabel: "Pick a color",
+    sceneWall: "Wall painted in",
+    sceneSpray: "Railing painted in",
+    ctaWall: "See paints",
+    ctaSpray: "See spray paints",
+    disclaimer:
+      "On-screen colors are a guide only. The final shade shifts with the room's light, the primer underneath and the sheen of the finish.",
   },
 
   actions: {
@@ -508,6 +558,12 @@ const en = {
       "Message us on WhatsApp and we'll send you the full list with trade terms.",
     button: "Message us on WhatsApp",
     hours: "We're open Monday to Friday, 8 am to 5 pm.",
+  },
+
+  storeMap: {
+    eyebrow: "Where to find us",
+    title: "Come by the warehouse",
+    howToGet: "Get directions",
   },
 
   product: {
@@ -605,14 +661,16 @@ const en = {
 
   login: {
     title: "Sign in",
-    subtitle: "Use the username and password your sales rep gave you.",
-    user: "Username",
+    subtitle: "Use the email and password your sales rep gave you.",
+    email: "Email",
     password: "Password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     submit: "Sign in",
     submitting: "Signing in…",
     back: "Back to the catalog",
-    error: "Wrong username or password.",
-    notConfigured: "Access is not configured. Environment variables are missing.",
+    error: "Wrong email or password.",
+    notConfigured: "Access is not configured. Supabase variables are missing.",
     whyTitle: "What is this for?",
     whyText:
       "The catalog is open to everyone, but prices and ordering are for customers only.",

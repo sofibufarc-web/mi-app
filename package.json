@@ -9,10 +9,19 @@
     "lint": "eslint",
     "video": "remotion studio remotion/index.ts",
     "video:render": "remotion render remotion/index.ts HeroPintura public/video/hero-pintura.mp4",
-    "video:poster": "remotion still remotion/index.ts HeroPintura public/video/hero-pintura.jpg --frame=0 --image-format=jpeg --jpeg-quality=80"
+    "video:poster": "remotion still remotion/index.ts HeroPintura public/video/hero-pintura.jpg --frame=0 --image-format=jpeg --jpeg-quality=80",
+    "db:push": "node --env-file=.env.local scripts/db.mjs push",
+    "db:status": "node --env-file=.env.local scripts/db.mjs status",
+    "db:new": "node --env-file=.env.local scripts/db.mjs new",
+    "db:usuario": "node --env-file=.env.local scripts/crear-usuario.mjs",
+    "db:check": "node --env-file=.env.local scripts/probar-conexion.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "leaflet": "^1.9.4",
     "next": "16.3.4",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -21,12 +30,14 @@
   "devDependencies": {
     "@remotion/cli": "^4.0.520",
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "remotion": "^4.0.520",
+    "supabase": "^2.117.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

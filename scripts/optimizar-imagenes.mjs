@@ -42,7 +42,8 @@ const PUBLICO = path.join(raiz, "public", "img");
  * ("rodillos y pinceles .png"). Escribirlo a mano evita sorpresas silenciosas
  * del tipo "esta categoría se quedó sin foto y nadie se dio cuenta".
  *
- * La clave es el `slug` de la categoría en `src/data/categories.json`.
+ * La clave es el `slug` de la categoría, tal como está en la tabla
+ * `categories` de la base.
  */
 const CATEGORIAS = {
   pinturas: "pinturas.png",

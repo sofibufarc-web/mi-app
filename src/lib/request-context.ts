@@ -1,9 +1,12 @@
 import "server-only";
 
 import { cookies, headers } from "next/headers";
+import { cache } from "react";
 
 import { siteConfig, type Role } from "@/config/site";
-import { canSeePrices, roleForSessionToken } from "@/lib/auth";
+import { canSeePrices, type Session } from "@/lib/auth";
+import { getUserById } from "@/lib/data-source";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getDictionary, isLocale, type Dictionary, type Locale } from "@/lib/i18n";
 import { LOCALE_COOKIE, LOCALE_HEADER, resolveLocale } from "@/lib/locale";
 
@@ -46,10 +49,46 @@ export async function getT(): Promise<Dictionary> {
   return getDictionary(await getLocale());
 }
 
+/**
+ * La sesión de este request: `{ userId, email, role }`, o `null` si no hay.
+ *
+ * Junta las dos mitades que viven en lados distintos:
+ *
+ * 1. **Quién es** lo dice Supabase Auth, a partir de la cookie de sesión.
+ * 2. **Qué rol tiene** lo dice la tabla `profiles`, en nuestra base.
+ *
+ * Se usa `getUser()` y no `getSession()` de Supabase, y la diferencia importa:
+ * `getSession()` se cree lo que dice la cookie, que el navegador puede haber
+ * modificado. `getUser()` valida el token contra el servidor de Auth. En un
+ * Server Component, donde la respuesta depende de quién sea, esa validación no
+ * es opcional.
+ *
+ * A diferencia de la cookie firmada de antes, esto **sí se entera en el acto**
+ * si a alguien lo desactivan: el rol se lee de la base en cada request, no queda
+ * congelado en el token. Por eso un perfil inactivo devuelve `null` acá mismo.
+ *
+ * `cache()` de React memoriza el resultado durante este request. Una página
+ * puede preguntar por el visitante cinco veces —el header, el layout, la ficha
+ * de producto—; sin esto serían cinco viajes al servidor de Auth y cinco
+ * consultas a la base para responder siempre lo mismo.
+ */
+export const getSession = cache(async function getSession(): Promise<Session | null> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const perfil = await getUserById(user.id);
+  if (!perfil || !perfil.active) return null;
+
+  return { userId: user.id, email: perfil.email, role: perfil.role };
+});
+
 /** Rol del visitante: "admin", "cliente" o `null` si no inició sesión. */
 export async function getRole(): Promise<Role | null> {
-  const cookieStore = await cookies();
-  return roleForSessionToken(cookieStore.get(siteConfig.auth.cookieName)?.value);
+  return (await getSession())?.role ?? null;
 }
 
 /**

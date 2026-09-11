@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { loginAction, type LoginState } from "@/app/actions/auth";
@@ -8,7 +8,8 @@ import type { Dictionary } from "@/lib/i18n";
 
 /**
  * `useActionState` conecta el <form> con una Server Action y guarda lo que la
- * action devuelve (acá, el mensaje de error) para poder mostrarlo.
+ * action devuelve (acá, el mensaje de error y el usuario tipeado) para poder
+ * mostrarlo.
  *
  * `useFormStatus` tiene que estar en un componente HIJO del <form>: lee si el
  * formulario se está enviando para deshabilitar el botón. Por eso el botón es
@@ -28,24 +29,69 @@ function SubmitButton({ t }: { t: Dictionary }) {
   );
 }
 
+/** Ojo abierto / ojo tachado. Dibujados con `currentColor`, heredan el color. */
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-[18px] w-[18px]"
+      aria-hidden
+    >
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {crossed && <path d="m4 20 16-16" />}
+    </svg>
+  );
+}
+
 export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
   const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {
     error: null,
+    email: "",
   });
 
+  /**
+   * El campo de email es CONTROLADO (su valor sale de este estado de React).
+   * Es lo que hace que sobreviva a un intento fallido: cuando una Server Action
+   * termina, React resetea los campos del formulario, y un campo no controlado
+   * volvería a quedar vacío. Uno controlado conserva el valor de React.
+   *
+   * El valor inicial sale de `state.email`, que es lo que devolvió el servidor.
+   * Eso cubre el caso de que el JavaScript todavía no haya cargado: ahí el
+   * formulario se envía a la vieja usanza, la página se vuelve a renderizar
+   * entera y el email igual aparece escrito.
+   *
+   * La contraseña NO se conserva: es lo que probablemente estuvo mal, y dejar
+   * una clave escrita en pantalla después de un error no aporta nada.
+   */
+  const [email, setEmail] = useState(state.email);
+
+  /** ¿La contraseña se está mostrando en texto plano? */
+  const [showPassword, setShowPassword] = useState(false);
+
   const fieldClass =
-    "h-11 rounded-md border border-line bg-card px-3 text-sm text-ink outline-none transition focus:border-brand";
+    "h-11 w-full rounded-md border border-line bg-card px-3 text-sm text-ink outline-none transition focus:border-brand";
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="next" value={next} />
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-ink-soft">{t.login.user}</span>
+        <span className="text-xs font-semibold text-ink-soft">{t.login.email}</span>
         <input
-          name="user"
+          name="email"
+          // type="email" hace dos cosas en el celular: muestra el teclado con la
+          // arroba a mano y valida el formato antes de enviar.
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           required
-          autoComplete="username"
+          autoComplete="email"
           autoFocus
           className={fieldClass}
         />
@@ -55,13 +101,35 @@ export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
         <span className="text-xs font-semibold text-ink-soft">
           {t.login.password}
         </span>
-        <input
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          className={fieldClass}
-        />
+        {/* `relative` para poder apoyar el botón del ojo adentro del campo. */}
+        <div className="relative">
+          <input
+            name="password"
+            // Todo el truco del ojo es este atributo: "password" tapa los
+            // caracteres con puntitos, "text" los muestra.
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            // pr-11 reserva el lugar del botón para que el texto no se le meta abajo.
+            className={`${fieldClass} pr-11`}
+          />
+          <button
+            // `type="button"` es obligatorio: adentro de un <form>, un <button>
+            // sin type es de tipo "submit" y tocarlo enviaría el formulario.
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            // El texto cambia según el estado, así un lector de pantalla anuncia
+            // qué va a pasar si se toca, no qué está pasando ahora.
+            aria-label={
+              showPassword ? t.login.hidePassword : t.login.showPassword
+            }
+            aria-pressed={showPassword}
+            title={showPassword ? t.login.hidePassword : t.login.showPassword}
+            className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ink-soft transition hover:bg-surface hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            <EyeIcon crossed={showPassword} />
+          </button>
+        </div>
       </label>
 
       {state.error && (
