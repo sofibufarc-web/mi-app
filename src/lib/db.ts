@@ -12,53 +12,97 @@ import postgres from "postgres";
  * módulo desde un componente de cliente. Sin esa red, la cadena de conexión
  * —que incluye la contraseña— podría terminar en el navegador.
  *
- * ## Las dos URLs, y por qué la app usa la de 5432
+ * ## Las dos URLs, y cuál conviene
  *
- * Supabase da dos direcciones para la misma base:
+ * Supabase da dos direcciones para la misma base. Las dos son un pooler, que
+ * es un repartidor de conexiones: la base aguanta pocas conexiones abiertas y
+ * el pooler las presta.
  *
- * - `DIRECT_URL`   (puerto 5432) → pooler en **modo sesión**. Es la que usa la
- *   app, y también las migraciones y los scripts de `scripts/`.
- * - `DATABASE_URL` (puerto 6543) → pooler en **modo transacción**. La app NO la
- *   usa. Ver abajo.
+ * - `DIRECT_URL` (puerto 5432) → pooler en **modo sesión**. Le asigna una
+ *   conexión a cada cliente y se la deja mientras esté conectado. **Es la que
+ *   usa la app**, y también las migraciones y los scripts de `scripts/`.
+ * - `DATABASE_URL` (puerto 6543) → pooler en **modo transacción**. Presta la
+ *   conexión mientras dura una consulta o una transacción y después la
+ *   recupera. En teoría rinde mucho más; en la práctica esta app se cuelga con
+ *   él. Ver abajo.
  *
- * Las dos son un pooler, no una conexión cruda: un servidor sin estado como
- * Next puede atender muchos pedidos a la vez, y sin un pooler de por medio cada
- * uno abriría su propia conexión hasta agotar el cupo de la base.
+ * ## Por qué importa tanto en Vercel, y qué pasó la primera vez que se publicó
  *
- * ## Por qué NO se usa el pooler de transacciones (6543)
+ * En Vercel el sitio no es un servidor encendido: son muchas copias que se
+ * prenden y se apagan según el tráfico, y cada una abre sus propias conexiones.
+ * Con el modo sesión cada copia se queda con las suyas hasta apagarse, y el
+ * pooler de este proyecto presta **15**. Con tres o cuatro copias vivas ya no
+ * queda ninguna y todo lo que pide datos responde error 500:
  *
- * Este driver **encadena** varias consultas por la misma conexión sin esperar
- * la respuesta de cada una (pipelining). Es lo que hace que una página que pide
- * seis cosas a la vez tarde lo que la más lenta y no la suma de todas.
+ *     (EMAXCONNSESSION) max clients reached in session mode
+ *                       max clients are limited to pool_size: 15
  *
- * El pooler en modo transacción reparte una conexión de servidor distinta por
- * transacción. Con las consultas encadenadas, pierde el hilo y **deja de
- * responder**: no da error, simplemente se cuelga. Medido contra esta misma
- * base: 30 consultas de a una andan bien por los dos puertos, pero 30 en
- * paralelo tardan 504 ms por el 5432 y no terminan nunca por el 6543.
+ * Es exactamente lo que pasó en el primer deploy.
  *
- * El modo sesión no tiene ese problema porque mantiene la conexión asignada al
- * cliente mientras dura. `max` de acá abajo es lo que evita que se descontrole.
+ * ## Por qué NO se usa el 6543, aunque resolvería lo de arriba
  *
- * (El puerto 6543 es el que recomienda Supabase para Prisma, que no encadena
- * consultas. Por eso la plantilla que da el panel trae esa URL primero.)
+ * Este driver **encadena** consultas por la misma conexión sin esperar cada
+ * respuesta (pipelining), y el modo transacción pierde el hilo con eso: las
+ * páginas dejan de responder, sin dar error.
+ *
+ * Se probó pasar la app al 6543 y hubo que volver atrás. Medido contra esta
+ * misma base:
+ *
+ * - Un script suelto por el 6543 anda bien: 30 consultas juntas, 1035 ms. Por
+ *   eso la prueba aislada no alcanza para decidir.
+ * - La app real por el 6543: `/categoria/aerosoles` tardaba entre 2 y 7
+ *   minutos, y después ni la home respondía. Hasta
+ *   `select * from store_config where id = 1`, una fila de una tabla de una
+ *   fila, moría por `statement timeout`.
+ * - La misma página por el 5432: **1,9 s** la primera vez y 0,9 s en caliente.
+ *
+ * Lo que delata el mecanismo es `pg_stat_activity`: las conexiones quedaban
+ * `idle` con `wait_event = ClientRead` y la consulta ya respondida. Es decir,
+ * la base contestó y el driver nunca levantó la respuesta. No es lentitud de
+ * la base ni bloqueos: no había ninguna transacción abierta ni un solo lock.
+ *
+ * **Entonces lo de Vercel sigue pendiente.** El cupo de 15 conexiones en modo
+ * sesión es real y es lo que tiró el primer deploy. La salida no es cambiar de
+ * puerto: hay que bajar las conexiones que abre cada copia (de ahí `max: 1`) y,
+ * si vuelve a pasar, mirar el pool_size del proyecto en Supabase.
  *
  * ## `prepare: false`
  *
  * Un "prepared statement" es una consulta que Postgres compila una vez y
  * después reutiliza. Vive atada a una conexión, así que con un pooler de por
- * medio la siguiente consulta puede no encontrarlo. Se desactiva por las dudas.
+ * medio la siguiente consulta puede no encontrarlo. En modo transacción no es
+ * opcional: hay que desactivarlo.
  */
 
-const url = process.env.DIRECT_URL;
+/**
+ * El de sesión si está, y si no el de transacciones.
+ *
+ * El orden importa y es el de arriba: por el 6543 la app se cuelga. El fallback
+ * existe sólo para un entorno viejo donde `DIRECT_URL` no esté cargada, y ahí
+ * es mejor un sitio raro que un sitio caído.
+ */
+const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
 if (!url) {
   throw new Error(
-    "Falta DIRECT_URL. Copiala de .env.example a .env.local con los datos de tu " +
-      "proyecto de Supabase (Project Settings → Database → Connection string → " +
-      "Session pooler, puerto 5432).",
+    "Falta DIRECT_URL. Copiala de .env.example a .env.local con los datos de " +
+      "tu proyecto de Supabase (Project Settings → Database → Connection string " +
+      "→ Session pooler, puerto 5432).",
   );
 }
+
+/** ¿Estamos yendo por el pooler de transacciones? Se nota en el puerto. */
+const modoTransaccion = url.includes(":6543");
+
+/**
+ * Cuántas conexiones abre cada copia del servidor.
+ *
+ * En modo transacción el pooler las recicla enseguida, así que unas pocas
+ * rinden mucho. En modo sesión cada una queda tomada mientras la copia viva, y
+ * el cupo es de 15 en total: ahí conviene pedir una sola y que el pipelining
+ * del driver haga el resto.
+ */
+const max = modoTransaccion ? 5 : 1;
 
 /**
  * En desarrollo, Next recarga los módulos con cada cambio de archivo. Sin este
@@ -72,10 +116,9 @@ export const sql =
   global_.__wiedmerSql ??
   postgres(url, {
     prepare: false,
-    // Cada instancia del servidor abre como mucho 5 conexiones al pooler.
-    max: 5,
-    // Cierra las conexiones ociosas: en Vercel cada request puede caer en una
-    // instancia distinta y las que quedan colgadas ocupan cupo al pedo.
+    max,
+    // Devuelve la conexión al pooler cuando no se está usando. Cuanto antes
+    // vuelva, antes la aprovecha otra copia del servidor.
     idle_timeout: 20,
     // Si la base no responde en 10 segundos, error claro en vez de esperar
     // para siempre.

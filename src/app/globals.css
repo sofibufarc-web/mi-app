@@ -353,6 +353,39 @@ input[type="number"] {
 }
 
 /*
+ * Cinta de colores de la home.
+ *
+ * El loop sin costura: la lista se dibuja DOS veces, una al lado de la otra, y
+ * cada copia se corre el 100% de SU PROPIO ancho. Cuando la primera termina de
+ * salir por la izquierda, la segunda quedó exactamente donde arrancó la
+ * primera, así que el salto de vuelta al cuadro 0 no se ve.
+ *
+ * Dos detalles que parecen menores y no lo son:
+ *
+ * - `linear` y no una curva suave. Cualquier easing haría que la cinta acelere
+ *   al principio y frene al final de cada vuelta, y ese frenado delata dónde
+ *   está el corte.
+ * - Se anima `transform` y no `margin-left`. Una transformación la resuelve la
+ *   placa de video sola; mover un margen obliga al navegador a recalcular el
+ *   layout de la página en CADA cuadro, y esto no para nunca.
+ *
+ * La duración la pone cada fila por `style`, porque no tienen la misma
+ * cantidad de muestras y con un solo número una se vería más lenta que la otra.
+ */
+@keyframes wiedmer-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@utility animate-marquee {
+  animation: wiedmer-marquee 48s linear infinite;
+}
+
+/*
  * Respetar “reducir movimiento”.
  *
  * Es una preferencia del sistema operativo. Quien la activa suele hacerlo por

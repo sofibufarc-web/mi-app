@@ -207,6 +207,15 @@ Remotion.
     de marca de agua gigante en el hero y como favicon en `src/app/icon.svg`).
   - El PNG original de referencia está en `imagenes/`. **No se usa en la app**:
     trae el fondo azul quemado adentro y no escala.
+  - El favicon es `src/app/icon.svg`: el bloque azul relleno con la W en blanco.
+    No es el logo del header tal cual, y es a propósito: a 16 píxeles, que es el
+    tamaño real de una pestaña, un contorno fino desaparece y un bloque macizo
+    se distingue.
+    > **Cuidado con `favicon.ico`.** El proyecto arrancó con el que trae Create
+    > Next App, y mientras ese archivo existió la W no se vio nunca: cuando
+    > están los dos, Next publica el `.ico` en `/favicon.ico` y el navegador lo
+    > prefiere. Se borró. Si algún día vuelve a aparecer un `.ico` en
+    > `src/app/`, es eso lo que tapa el isotipo.
 
 ### El hero
 
@@ -242,7 +251,6 @@ azul cayendo de un tarro a una bandeja. Encima, dos velos negros, el título
 | Hero | Franja con una foto fija, título y bajada | sí | sí (+ botón "hablar con un vendedor") |
 | Accesos | Las acciones concretas del visitante | solo "recorrer el catálogo" + cartel de acceso | las tres |
 | Categorías | Fichas con foto y nombre encima | sí | sí |
-| Simulador de color | Elegís un color y lo ves aplicado | sí | sí |
 | La empresa | Quiénes somos, zona de reparto, contacto | sí | sí |
 | Cómo se compra | Los tres pasos del pedido, en fichas numeradas | sí | sí |
 | Cierre | Llamada a WhatsApp | sí | sí |
@@ -325,59 +333,57 @@ del título—. El degradado no es decoración: sin él habría que elegir entre
 visible o título legible, porque algunas fotos son claras (lijas) y otras
 oscuras (impermeabilizantes).
 
-### El simulador de color
+### La cinta de colores — HOY SIN USO
 
-`src/components/color-simulator.tsx`. Elegís un color de la carta y lo ves
-aplicado sobre una escena. Dos escenas, con una pestaña que las cambia: **una
-pared** (para pinturas) y **una reja** (para aerosoles, que es lo que de verdad
-se pinta con un spray).
+> **Se sacó de la home.** Entre las categorías y lo institucional metía una
+> parada que no devolvía al catálogo. El archivo sigue en el repo, como el
+> simulador de color que estaba antes en ese mismo lugar; sus textos
+> (`t.colorStrip`) y la carta (`src/data/paint-colors.ts`) también. Lo que sigue
+> describe cómo está hecho, por si se lo quiere volver a poner.
 
-**No es realidad virtual ni realidad aumentada.** No hay cámara, ni 3D, ni
-anteojos. Es lo que en el rubro se llama *simulador de color*, que es lo que la
-gente pide cuando dice "quiero ver cómo queda".
+`src/components/color-strip.tsx`. Dos filas con la carta de colores —látex
+arriba, aerosol abajo— que se deslizan solas y en sentidos opuestos, de borde a
+borde de la pantalla.
 
-**La escena está dibujada en SVG, no es una foto.** Con una foto habría que
-recortar a mano qué píxeles son pared —la misma medición que hubo que hacer para
-el video del hero— y repetirlo con cada foto nueva. Acá cada superficie es un
-`<path>`, así que pintar es cambiarle el `fill` a un elemento. Además pesa unos
-KB y se ve nítido en cualquier pantalla. La contra, asumida: se lee como
-ilustración y no como foto. Si algún día hay fotos de ambientes, se reemplaza la
-escena sin tocar el resto.
+**Es un Server Component: no lleva `"use client"`.** Todo el movimiento es CSS,
+así que no viaja ni una línea de JavaScript al navegador para que la cinta ande.
+El único estado sería "¿está pausada?", y de eso se encarga `:hover` en la hoja
+de estilos.
 
-**Lo que hace que el color no se vea plano:** el color va en una capa y las
-sombras y luces en otra, encima, en **gris translúcido**. Como el degradado no
-tiene color propio, oscurece o aclara lo que tenga debajo sea cual sea. Un solo
-juego de sombras sirve para los 22 colores; con sombras coloreadas habría que
-dibujar 22.
+**El loop no tiene costura.** La lista se dibuja **dos veces**, una al lado de la
+otra, y cada copia se corre el 100% de *su propio* ancho (`animate-marquee` en
+`globals.css`). Cuando la primera termina de salir por la izquierda, la segunda
+quedó exactamente donde arrancó la primera, así que el salto de vuelta al primer
+cuadro no se ve. La copia duplicada lleva `aria-hidden`: un lector de pantalla
+leería los doce colores dos veces seguidas sin que eso agregue nada.
 
-**La reja se dibuja una sola vez.** Las barras viven en `<defs>` sin color
-propio, y la escena las pinta tres veces con `<use>`: la sombra proyectada en la
-pared (negro corrido), el color, y el sombreado del metal. Escribirlas tres
-veces significaría que mover un barrote hay que acordarse de moverlo en tres
-lados.
+Tres detalles que parecen menores y no lo son:
 
-**Las dos animaciones** (`animate-roller` y `animate-spray` en `globals.css`) se
-disparan una sola vez, al elegir un color, y vuelven a arrancar gracias a
-`key={color.id}`: React ve una key distinta, monta un elemento nuevo y la
-animación CSS empieza de cero. Es el mismo truco que usa el carrusel de placas.
-Con `prefers-reduced-motion` se anulan solas por la regla global, y el color
-igual queda aplicado, que es lo que importa.
+- **`linear` y no una curva suave.** Cualquier easing haría que la cinta acelere
+  al principio y frene al final de cada vuelta, y ese frenado delata dónde está
+  el corte.
+- **Se anima `transform`, no `margin-left`.** Una transformación la resuelve la
+  placa de video sola; mover un margen obliga a recalcular el layout de la
+  página en cada cuadro, y esto no para nunca.
+- **Las dos filas van para lados distintos.** Con las dos en la misma dirección
+  el conjunto se lee como un solo bloque que se corrió y el movimiento se vuelve
+  invisible; en sentidos opuestos cada fila hace de referencia fija de la otra.
 
-Dos detalles que no se ven pero cambian el resultado:
+La duración la pone cada fila por `style` (48 s y 40 s): no tienen la misma
+cantidad de muestras, y con un solo número la más corta se vería más lenta.
 
-- La banda del rodillo lleva el `skewX` en un `<g>` que la envuelve, no en el
-  `<rect>`. Un `transform` de CSS **pisa** al atributo `transform` del SVG: con
-  los dos en el mismo elemento, la banda se movía pero perdía la diagonal.
-- La nube del spray lleva `transform-box: fill-box`. Sin eso, CSS toma el
-  `viewBox` entero como caja de referencia y la nube crece desde una esquina en
-  vez de desde su centro.
+Lo que la hace usable: se **pausa al pasar el mouse**, para poder leer un
+nombre. Con `prefers-reduced-motion` la regla global de `globals.css` la deja
+quieta en el primer cuadro, y las muestras se ven igual. Y una máscara en los
+bordes (`mask-image`) hace que los colores se desvanezcan al entrar y salir en
+vez de cortarse: sin ella la cinta parece un contenedor con scroll.
 
 **La carta de colores** está en `src/data/paint-colors.ts`. Es un `.ts` y no una
 tabla de la base porque el panel no la edita: la regla del proyecto es que a la
-base va lo que se escribe en tiempo de ejecución, y la carta es fija. Los **nombres de los colores no se
-traducen**, por lo mismo que no se traduce "Látex Interior 20 L": es el nombre
-comercial del color. Lo que sí está en el diccionario (`t.simulator`) es la
-interfaz alrededor.
+base va lo que se escribe en tiempo de ejecución, y la carta es fija. Los
+**nombres de los colores no se traducen**, por lo mismo que no se traduce "Látex
+Interior 20 L": es el nombre comercial del color. Lo que sí está en el
+diccionario (`t.colorStrip`) es la interfaz alrededor.
 
 `isLightColor()` en `src/lib/color.ts` decide si el nombre del color va escrito
 en negro o en blanco encima de la muestra. No es el promedio de R, G y B: usa
@@ -386,14 +392,21 @@ mucho más luminoso que el azul. Por eso un amarillo pleno se lee "claro" y un
 azul pleno "oscuro", aunque los dos usen dos canales al máximo.
 
 **Va después de las categorías, no antes.** Quien entra a un mayorista viene a
-buscar un rubro: primero se le da eso, y el simulador después, que además lo
-devuelve al catálogo con su propio botón ("Ver pinturas" / "Ver aerosoles").
+buscar un rubro: primero se le da eso, y la carta después, que además lo
+devuelve al catálogo con sus dos links ("Ver pinturas" / "Ver aerosoles").
 Arriba se comería el lugar de lo que la gente vino a hacer.
+
+> `src/components/color-simulator.tsx` era lo que estaba antes en este lugar
+> —elegías un color y lo veías aplicado sobre una pared o una reja dibujadas en
+> SVG— y **quedó sin uso**: ocupaba media pantalla y le pedía al visitante que
+> hiciera algo justo donde lo que se busca es que siga bajando. El archivo sigue
+> en el repo por si se quiere volver a él; sus textos son `t.simulator`, y sus
+> animaciones `animate-roller` y `animate-spray` siguen en `globals.css`.
 
 ### Layout
 
 - **Home**: es una PORTADA INSTITUCIONAL. **No muestra ni un producto.** El
-  orden es: hero → accesos rápidos → categorías → simulador de color →
+  orden es: hero → accesos rápidos → categorías →
   la empresa → cómo se compra → cierre. Las categorías van arriba, pegadas a "¿Qué necesitás
   hacer?", porque son el destino real del visitante: lo institucional se lee
   después, no antes. Los artículos viven en
@@ -451,15 +464,19 @@ mi-app/
 ├── scripts/
 │   ├── db.mjs                       ← envoltorio del CLI de Supabase
 │   ├── probar-conexion.mjs          ← chequeo rápido de la base
+│   ├── crear-usuario.mjs            ← alta de cuenta (y el primer admin)
+│   ├── cambiar-password.mjs         ← contraseña nueva, cuando el mail no es opción
 │   ├── generar-plantilla.mjs        ← genera la plantilla .xlsx (lee la base)
 │   ├── importar-lista.mjs           ← carga inicial del catálogo desde el Excel
 │   ├── optimizar-imagenes.mjs           ← fotos originales → WebP
+│   ├── fotos-proveedores.mjs            ← fotos de producto desde Sinteplast y Kuwait
+│   ├── fotos-sitio.mjs                  ← fotos de producto desde wiedmer.com.ar
 │   └── generar-imagenes-categorias.mjs   ← SVG de respaldo por categoría
 └── src/
     ├── config/site.ts        ← config estática (credenciales, flags). NO editable desde el panel
     ├── data/
     │   ├── types.ts          ← Product, Category, StoreConfig, Order, CartItem
-    │   ├── paint-colors.ts   ← carta de colores del simulador (no la edita el panel)
+    │   ├── paint-colors.ts   ← carta de colores de la cinta (no la edita el panel)
     │   └── (los .json viejos se borraron: los datos están en la base)
     ├── lib/
     │   ├── db.ts             ← ★ conexión a Postgres
@@ -486,7 +503,8 @@ mi-app/
     ├── components/           ← UI compartida (header, footer, cards, formularios…)
     │   ├── wiedmer-logo.tsx  ← logo SVG (isotipo + palabra)
     │   ├── hero-canvas.tsx   ← fondo animado del hero
-    │   ├── color-simulator.tsx← simulador de color de la home (pared / reja)
+    │   ├── color-strip.tsx   ← la cinta de colores, HOY SIN USO
+    │   ├── color-simulator.tsx← el simulador viejo, HOY SIN USO
     │   ├── reveal.tsx        ← aparición al scrollear
     │   ├── theme-toggle.tsx  ← modo día / modo noche
     │   ├── language-switcher.tsx
@@ -560,6 +578,15 @@ base; cambia el camino.
 > pierde el hilo: **deja de responder, sin dar error**. Medido contra esta base:
 > 30 consultas de a una andan por los dos puertos, pero 30 en paralelo tardan
 > 504 ms por el 5432 y no terminan nunca por el 6543.
+>
+> **Se volvió a intentar el 6543 y hubo que volver atrás.** La prueba aislada
+> engaña: un script suelto por el 6543 anda bien. La app no. `/categoria/…`
+> tardaba entre 2 y 7 minutos y después ni la home respondía; hasta
+> `select * from store_config where id = 1` moría por `statement timeout`. En
+> `pg_stat_activity` las conexiones quedaban `idle` con `ClientRead` y la
+> consulta ya respondida: la base contestaba y el driver no levantaba la
+> respuesta. Sin locks ni transacciones abiertas. Por el 5432, la misma página
+> tarda 1,9 s. **Para probar esto no alcanza un script: hay que medir la app.**
 >
 > El 6543 es el que recomienda Supabase para Prisma, que no encadena consultas.
 > Por eso la plantilla del panel lo pone primero.
@@ -879,6 +906,20 @@ terminal del proyecto, no hace falta que espere un correo) y le pone el rol al
 perfil. Si el email ya tiene cuenta no falla: le corrige el rol y la reactiva,
 que es lo que hace falta cuando alguien se quedó afuera del panel.
 
+**Lo que NO hace es cambiarle la contraseña a una cuenta que ya existe.** Para
+eso está el mail de restablecimiento, y para cuando el mail no es una opción
+—el correo por defecto de Supabase sólo escribe a integrantes del proyecto— hay
+una salida de emergencia por terminal:
+
+```sh
+npm run db:password -- sofia@ejemplo.com
+```
+
+Escribe el hash bcrypt directo en `auth.users` con `pgcrypto`, que es el mismo
+formato que guarda Supabase Auth, y de paso cierra las sesiones abiertas de esa
+cuenta. Va por SQL y no por la API de administración de Supabase porque esa API
+pide la clave secreta del proyecto, y la regla de la casa es no tenerla.
+
 **Flag de catálogo privado:** `requireLoginForCatalog` en `src/config/site.ts`.
 Default `false`. En `true`, el proxy protege también el catálogo y no se ve
 absolutamente nada sin sesión.
@@ -1022,6 +1063,152 @@ mano. Ver la sección 9.
 
 ---
 
+## 6 bis. Fotos de producto, traídas de los proveedores
+
+`scripts/fotos-proveedores.mjs`. El catálogo son 1230 artículos sin una sola foto
+propia. Las dos marcas que más pesan publican las suyas en sus sitios, así que se
+traen de ahí.
+
+```sh
+npm run fotos:catalogo    # baja las dos listas → datos-proveedores/catalogo.json
+npm run fotos:proponer    # cruza con la base   → fotos-propuestas.xlsx
+npm run fotos:aplicar -- --dry-run   # qué haría
+npm run fotos:aplicar                # sube y anota
+```
+
+**Son tres pasos porque el del medio lo tiene que mirar una persona.** El
+proveedor tiene una foto por LÍNEA ("RECUPLAST INTERIOR - MATE") y esta base una
+fila por ARTÍCULO ("Recuplast Interior Mate 4 lt."), con los nombres abreviados
+como los manda el proveedor. Cruzar las dos listas es adivinar con reglas, y las
+reglas se equivocan. Mejor que se equivoquen sobre un Excel. Es el mismo criterio
+de `/admin/precios`: primero la previsualización, después la confirmación.
+
+### De dónde sale cada catálogo
+
+- **Sinteplast** arma su listado desde el navegador pidiéndole los productos a
+  `/php/producto_GET.php`. Con el filtro vacío devuelve los 265 de una, así que
+  es **un solo pedido** en vez de recorrer las 34 secciones.
+- **Kuwait** está hecho en Wix y no tiene una llamada así, pero sí el sitemap con
+  las 27 fichas. De cada una se leen el `<title>` y la primera imagen del
+  contenido. Son 27 pedidos, con pausa entre uno y otro, y un reintento: Wix a
+  veces devuelve la página sin el contenido dinámico y una sola respuesta rara
+  dejaría afuera a toda una línea.
+
+Las fotos de Wix traen el tamaño escrito en la propia dirección
+(`/v1/fit/w_800,h_800,.../`). Se reescribe a 1200 px en vez de bajar la original,
+que en varias fichas pesa megas.
+
+### Cómo se cruzan las dos listas
+
+**Sinteplast: la marca de línea es el ancla.** "Latex Interior 4 lt" no dice de
+quién es; "Recuplast Interior Mate 4 lt." sí. Primero se busca una de las líneas
+conocidas (`LINEAS_SINTEPLAST`) en el nombre del artículo y recién **entre los
+productos de esa línea** se elige el más parecido. Sin ese paso, "Manta
+Sint.Media" se llevaba la foto de SINTESPRAY porque empieza igual, y "Mascarilla
+Anti Polvo" la de ANTIBURBUJAS.
+
+Tres detalles que cambiaron el resultado:
+
+1. **"SINTEPLAST" no cuenta como palabra.** El sitio firma medio catálogo con la
+   marca al final ("AGRESTE SINTEPLAST"). Contándola, "Recuplast Agreste" se
+   parecía tanto a esa ficha como a cualquier otro RECUPLAST; sin contarla, gana
+   la correcta.
+2. **Se prueban todas las líneas del nombre, no la primera.** "Recuplast Agreste"
+   nombra dos.
+3. **Hay palabras que cambian el producto, no el acabado**: hidro, epoxi,
+   membrana, fibrado, atérmico. "Recuplast Hidro Bco Satin" es un esmalte al agua
+   y "RECUPLAST INTERIOR - SATINADO" un látex de pared. Si el artículo trae una
+   de esas palabras y la foto candidata no, la fila baja a REVISAR.
+
+**Kuwait no tiene marca escrita en esta base**: sus productos están cargados como
+"Aerosol Amarillo x 240 cm3". Lo que se sabe es que los aerosoles de la casa son
+Kuwait, así que el cruce va por TIPO y sólo dentro de la categoría Aerosoles, con
+reglas en orden (`REGLAS_KUWAIT`), como las reglas de categoría de
+`importar-lista.mjs`. En esa categoría también hay aerosoles de Sinteplast
+—"Brillospray Max Epoxi"—, así que si el nombre nombra una línea de Sinteplast la
+regla de Kuwait no se aplica.
+
+### El Excel
+
+Dos hojas. En `propuestas`, una fila por artículo, **ordenadas por foto**: cada
+bloque es "estos doce artículos se llevan esta misma foto", que es como conviene
+revisarlo. La columna `aplicar` viene con:
+
+- **SI** cuando coincidió algo más que la línea;
+- **REVISAR** cuando coincidió sólo la línea. La foto es de esa línea, pero puede
+  no ser la del artículo. Son casi todos los Brilloplast y los Satinplast: el
+  sitio tiene dos latas de esmalte casi iguales y el nombre no alcanza para saber
+  cuál va.
+
+Para corregir una fila se escribe en la columna `foto` el nombre de otra de la
+hoja `catalogo`. Al aplicar, la dirección se busca **por ese nombre**, no por la
+columna `url`, justamente para que la corrección a mano tenga efecto.
+
+### La subida
+
+Las fotos van al mismo bucket `productos` de Supabase Storage donde sube el
+panel, y por el mismo camino: **el script inicia sesión con un usuario admin de
+verdad** y sube con esa sesión. La otra forma sería la clave secreta del
+proyecto, que saltea las políticas, pero la regla de la casa es no tenerla: una
+credencial que no existe no se puede filtrar. La contraseña se pide por teclado
+y no se pasa por argumento, que quedaría en el historial de la terminal.
+
+Una misma foto le toca a muchos artículos, así que **se sube una sola vez** y
+todos guardan la misma dirección. Se convierte a WebP de hasta 1200 px, sin
+agrandar las que vienen más chicas (las de Sinteplast son de 500 px de ancho).
+Lo que se anota en la base va en una transacción: o quedan todos los artículos
+apuntando a su foto o no queda ninguno.
+
+Ni el catálogo bajado ni el Excel se versionan (`.gitignore`): son datos que se
+vuelven a bajar cuando hagan falta. Lo versionado es el resultado, que vive en
+Storage y en `products.images`.
+
+---
+
+## 6 ter. Fotos del sitio viejo (wiedmer.com.ar)
+
+`scripts/fotos-sitio.mjs`. La otra fuente de fotos propias es el sitio que la
+empresa ya tiene publicado: 240 fichas, con foto de estudio y fondo blanco, de
+artículos que son exactamente los de este catálogo.
+
+```sh
+npm run sitio:catalogo   # baja fichas y fotos → imagenes/sitio-wiedmer/
+npm run sitio:proponer   # cruza con la base   → fotos-sitio-propuestas.xlsx
+npm run sitio:aplicar -- --dry-run   # qué haría
+npm run sitio:aplicar                # sube a Storage y anota
+```
+
+Son los mismos tres pasos que `fotos-proveedores.mjs` y por el mismo motivo: el
+sitio tiene una ficha por PRODUCTO y esta base una fila por ARTÍCULO (el mismo
+producto en 1/4, 1 y 4 litros), así que el cruce se hace por parecido de nombre
+y hay que mirarlo antes de aplicarlo.
+
+**De dónde salen las fotos.** El catálogo está en `/productos/pag/N`, de a 64.
+Cada ficha guarda sus fotos en una carpeta con su id, y publica dos tamaños:
+
+    /webfiles/wiedmer/productos/<id>/1_500x500.jpg     ← la del listado
+    /webfiles/wiedmer/productos/<id>/1_1000x1000.jpg   ← la de la ficha
+
+Se baja la de 1000, que es la más grande que hay, y se prueban `2_`, `3_`… hasta
+el primer 404: así se levantan las fichas que tienen más de una foto sin tener
+que abrir cada una.
+
+> El detalle que costó: el listado se parsea cortando por
+> `<div class="tt-product `, **con el espacio final**. Adentro de cada tarjeta
+> hay otro `<div class="tt-product-inside-hover">`, y sin el espacio el corte lo
+> agarra también: cada ficha salía dos veces, la segunda sin título.
+
+**Dónde quedan los originales.** En `imagenes/sitio-wiedmer/`, junto al resto de
+los originales del proyecto, fuera de `public/` y sin versionar: son datos que se
+vuelven a bajar cuando hagan falta. Lo que termina en el sitio es la copia WebP
+de hasta 1200 px que el paso `aplicar` sube a Supabase Storage, por el mismo
+camino que el panel: iniciando sesión con un admin de verdad, no con una clave
+secreta.
+
+**Por defecto no le toca la foto a un artículo que ya tiene una**, así que no
+pisa lo que trajo `fotos-proveedores.mjs`. Para revisar también esos,
+`npm run sitio:proponer -- --pisar`.
+
 ## 7. Checkout por WhatsApp
 
 El número destino sale de la tabla `store_config` → `whatsapp_number` (solo dígitos,
@@ -1157,7 +1344,9 @@ o usá el selector ES/EN del header.
    "ve / no ve". El lugar donde se decide es `canSeePrices()` en
    `src/lib/auth.ts`: está en una función propia justamente para que el día que
    existan dos listas se cambie en un solo lugar.
-7. Imágenes reales de producto (hoy hay un placeholder con la marca).
+7. **Imágenes reales de producto** — empezado: `scripts/fotos-proveedores.mjs`
+   trae las de Sinteplast y Kuwait (sección 6 bis). Quedan afuera las marcas que
+   no publican catálogo con fotos y los artículos sueltos de ferretería.
 8. ~~**Borrar los `.json` viejos**~~ — hecho.
 9. **Usar el video en el hero** — el `.mp4` ya está renderizado
    (`public/video/hero-pintura.mp4`) pero la home sigue mostrando `HeroCanvas`.

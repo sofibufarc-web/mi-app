@@ -52,3 +52,12 @@ next-env.d.ts
 # Lo que queda versionado es el resultado: los productos en la base.
 /imagenes/*.pdf
 /lista-precios-*.xlsx
+
+# Catálogos y fotos bajados de los sitios de los proveedores, y el Excel de
+# revisión que sale de ahí (scripts/fotos-proveedores.mjs). Son datos que se
+# vuelven a bajar cuando hagan falta; lo que queda versionado es el resultado:
+# las fotos en Supabase Storage y su dirección en cada producto.
+/datos-proveedores/
+/fotos-propuestas.xlsx
+/imagenes/sitio-wiedmer/
+/fotos-sitio-propuestas.xlsx

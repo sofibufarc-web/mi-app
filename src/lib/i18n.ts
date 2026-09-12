@@ -147,6 +147,26 @@ const es = {
       "Los colores en pantalla son orientativos. El tono final cambia con la luz del ambiente, la mano de fondo y el brillo del acabado.",
   },
 
+  /**
+   * Cinta de colores de la home: la que reemplazó al simulador.
+   *
+   * Los NOMBRES de los colores tampoco están acá: viven en
+   * `src/data/paint-colors.ts` y no se traducen, por lo mismo que no se traduce
+   * "Látex Interior 20 L". Acá está solo la interfaz que los rodea.
+   */
+  colorStrip: {
+    eyebrow: "Carta de colores",
+    title: "Los colores que salen del depósito",
+    subtitle:
+      "Los tonos de látex y de esmalte en aerosol que tenemos en stock. Pasá el mouse por encima para frenar la cinta y leer los nombres.",
+    wallLabel: "Látex y frentes",
+    sprayLabel: "Esmalte en aerosol",
+    ctaWall: "Ver pinturas",
+    ctaSpray: "Ver aerosoles",
+    disclaimer:
+      "Los colores en pantalla son orientativos. El tono final cambia con la luz del ambiente, la mano de fondo y el brillo del acabado.",
+  },
+
   /** Los tres accesos rápidos de la home. Dos se destraban con la sesión. */
   actions: {
     eyebrow: "Para empezar",
@@ -468,6 +488,19 @@ const en = {
     paletteLabel: "Pick a color",
     sceneWall: "Wall painted in",
     sceneSpray: "Railing painted in",
+    ctaWall: "See paints",
+    ctaSpray: "See spray paints",
+    disclaimer:
+      "On-screen colors are a guide only. The final shade shifts with the room's light, the primer underneath and the sheen of the finish.",
+  },
+
+  colorStrip: {
+    eyebrow: "Color chart",
+    title: "The colors we stock",
+    subtitle:
+      "The latex and spray enamel shades we keep in the warehouse. Hover to pause the strip and read the names.",
+    wallLabel: "Latex and exterior",
+    sprayLabel: "Spray enamel",
     ctaWall: "See paints",
     ctaSpray: "See spray paints",
     disclaimer:

@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { ColorSimulator } from "@/components/color-simulator";
 import { HeroCanvas } from "@/components/hero-canvas";
 import { PriceGateBanner } from "@/components/price-gate";
 import { Reveal } from "@/components/reveal";
@@ -310,41 +309,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ================= SIMULADOR DE COLOR ================= */}
       {/*
-        Va DESPUÉS de las categorías, no antes. El visitante que llega a un
-        mayorista viene a buscar un rubro; primero se le da eso y recién después
-        el simulador, que además lo devuelve al catálogo por su propio botón.
-        Arriba se comería el lugar de lo que la gente vino a hacer.
+        Acá estaba la CINTA DE COLORES (`ColorStrip`): la carta de colores
+        desfilando en dos filas. Se sacó de la home a pedido: entre las
+        categorías y lo institucional metía una parada que no llevaba a ningún
+        lado del catálogo.
 
-        Lo ve cualquiera, con o sin sesión: no muestra ni un precio.
+        El componente sigue en el repo (`src/components/color-strip.tsx`), igual
+        que el simulador de color que estaba antes en este mismo lugar. Sus
+        textos son `t.colorStrip` y la carta de colores `src/data/paint-colors.ts`.
       */}
-      <section className="border-y border-line bg-surface py-20">
-        <div className="container-wiedmer">
-          <Reveal>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-brand">
-              {t.simulator.eyebrow}
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t.simulator.title}
-            </h2>
-            <p className="mt-3 max-w-2xl text-ink-soft">{t.simulator.subtitle}</p>
-          </Reveal>
-
-          {/*
-            La tarjeta NO va envuelta en <Reveal>, a diferencia del resto de la
-            home. `Reveal` arranca en `opacity: 0` y destapa por JavaScript
-            cuando el elemento entra en pantalla. Para un texto es una mejora:
-            si algo falla, se ve igual apenas un poco más tarde. Para un bloque
-            con botones, si el observer no dispara no queda "sin animar": queda
-            un agujero en blanco donde debería haber controles. Un elemento
-            interactivo no se esconde por defecto.
-          */}
-          <div className="mt-10">
-            <ColorSimulator t={t.simulator} />
-          </div>
-        </div>
-      </section>
 
       {/* ================= LA EMPRESA ================= */}
       <section className="container-wiedmer py-20">

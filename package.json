@@ -14,7 +14,14 @@
     "db:status": "node --env-file=.env.local scripts/db.mjs status",
     "db:new": "node --env-file=.env.local scripts/db.mjs new",
     "db:usuario": "node --env-file=.env.local scripts/crear-usuario.mjs",
-    "db:check": "node --env-file=.env.local scripts/probar-conexion.mjs"
+    "db:password": "node --env-file=.env.local scripts/cambiar-password.mjs",
+    "db:check": "node --env-file=.env.local scripts/probar-conexion.mjs",
+    "fotos:catalogo": "node --env-file=.env.local scripts/fotos-proveedores.mjs catalogo",
+    "fotos:proponer": "node --env-file=.env.local scripts/fotos-proveedores.mjs proponer",
+    "fotos:aplicar": "node --env-file=.env.local scripts/fotos-proveedores.mjs aplicar",
+    "sitio:catalogo": "node --env-file=.env.local scripts/fotos-sitio.mjs catalogo",
+    "sitio:proponer": "node --env-file=.env.local scripts/fotos-sitio.mjs proponer",
+    "sitio:aplicar": "node --env-file=.env.local scripts/fotos-sitio.mjs aplicar"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -37,6 +44,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "remotion": "^4.0.520",
+    "sharp": "^0.35.4",
     "supabase": "^2.117.0",
     "tailwindcss": "^4",
     "typescript": "^5"
