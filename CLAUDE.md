@@ -473,6 +473,7 @@ mi-app/
 │   ├── fotos-sitio.mjs                  ← fotos de producto desde wiedmer.com.ar
 │   ├── unificar-fotos.mjs               ← una foto → fondo blanco, 1000×1000, mismo margen
 │   ├── unificar-en-storage.mjs          ← rehace las fotos que ya usan los productos
+│   ├── fotos-lote.mjs                   ← carga fotos propias en lote, desde un Excel
 │   └── generar-imagenes-categorias.mjs   ← SVG de respaldo por categoría
 └── src/
     ├── config/site.ts        ← config estática (credenciales, flags). NO editable desde el panel
@@ -1280,6 +1281,30 @@ transacción.
   (los que se cambiaron a mano no se tocan).
 - Un producto se reapunta solo si **todas** sus fotos del bucket se pudieron
   reemplazar.
+
+### Cargar fotos propias en lote (`scripts/fotos-lote.mjs`)
+
+Para los productos que ninguna fuente cubre. El Excel agrupa por artículo, así
+que una sola foto de lata puede asignarse a todos sus colores y tamaños.
+
+```sh
+npm run lote:plantilla              # fotos-lote.xlsx: una fila por producto sin foto
+npm run lote:aplicar -- --dry-run   # unifica y deja copias en imagenes/fotos-lote-previa/, NO sube
+npm run lote:aplicar                # sube y anota (pide email y contraseña de un admin)
+```
+
+1. Poner las fotos en `imagenes/fotos-nuevas/` (jpg, png o webp).
+2. En la columna `archivo` del Excel, escribir el nombre de la foto de cada
+   producto; repetirlo si varios comparten la misma. Las filas vacías se ignoran,
+   así que se puede completar de a poco y volver a correr.
+3. `aplicar` unifica cada foto, la sube **una vez** y la anota en todos los que la
+   nombran, en una transacción.
+
+Por defecto **no toca productos que ya tienen foto**; `--pisar` los reemplaza y
+guarda antes un respaldo en `respaldos/`. Un archivo que falla (por ejemplo un
+HEIC del iPhone, que `sharp` no abre: hay que pasarlo a JPG) se reporta y no
+frena al resto. `unificar()` respeta la orientación EXIF, así que las fotos de
+celular "acostadas" salen derechas.
 
 ### Aprobar propuestas: no confiar en el puntaje
 

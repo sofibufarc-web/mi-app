@@ -77,6 +77,7 @@ function cajaDelProducto(data, w, h, canales) {
 export async function unificar(rutaEntrada, { maxAmpliacion = MAX_AMPLIACION, nitidez = NITIDEZ } = {}) {
   // 1. Fondo -> blanco. Se trabaja en un buffer plano de 3 canales.
   const { data: crudo, info } = await sharp(rutaEntrada)
+    .rotate() // respeta la orientación EXIF: las fotos de celular vienen "acostadas" y traen anotado cuánto girarlas
     .flatten({ background: "#ffffff" }) // la transparencia se pinta de blanco (si no, queda negra o gris)
     .raw()
     .toBuffer({ resolveWithObject: true });

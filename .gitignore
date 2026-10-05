@@ -73,3 +73,9 @@ next-env.d.ts
 /fotos-propuestas.original.xlsx
 /fotos-sitio-propuestas.original.xlsx
 /respaldos/
+
+# Carga de fotos en lote (scripts/fotos-lote.mjs): las fotos que se van a cargar,
+# el Excel que las asigna a cada producto y las copias para revisar antes de subir.
+/imagenes/fotos-nuevas/
+/imagenes/fotos-lote-previa/
+/fotos-lote.xlsx
