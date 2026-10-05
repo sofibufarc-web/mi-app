@@ -30,3 +30,8 @@
 
 # Listados del proveedor, material de trabajo.
 /lista-precios-*.xlsx
+
+# Respaldos de la base y Excel de trabajo de las fotos.
+/respaldos/
+/productos-sin-foto.xlsx
+/fotos-*.xlsx

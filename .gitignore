@@ -61,3 +61,15 @@ next-env.d.ts
 /fotos-propuestas.xlsx
 /imagenes/sitio-wiedmer/
 /fotos-sitio-propuestas.xlsx
+
+# Unificación de fotos (scripts/unificar-fotos.mjs y unificar-en-storage.mjs):
+# las copias locales para mirar, el Excel de lo que falta y el respaldo de las
+# direcciones anteriores de cada producto. Son datos de trabajo, no código.
+/imagenes/fotos-unificadas/
+/imagenes/fotos-unificadas-storage/
+/imagenes/prueba-unificada/
+/imagenes/_cmp-pixelado.jpg
+/productos-sin-foto.xlsx
+/fotos-propuestas.original.xlsx
+/fotos-sitio-propuestas.original.xlsx
+/respaldos/

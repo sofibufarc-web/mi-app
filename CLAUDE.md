@@ -471,6 +471,8 @@ mi-app/
 │   ├── optimizar-imagenes.mjs           ← fotos originales → WebP
 │   ├── fotos-proveedores.mjs            ← fotos de producto desde Sinteplast y Kuwait
 │   ├── fotos-sitio.mjs                  ← fotos de producto desde wiedmer.com.ar
+│   ├── unificar-fotos.mjs               ← una foto → fondo blanco, 1000×1000, mismo margen
+│   ├── unificar-en-storage.mjs          ← rehace las fotos que ya usan los productos
 │   └── generar-imagenes-categorias.mjs   ← SVG de respaldo por categoría
 └── src/
     ├── config/site.ts        ← config estática (credenciales, flags). NO editable desde el panel
@@ -1209,6 +1211,101 @@ secreta.
 pisa lo que trajo `fotos-proveedores.mjs`. Para revisar también esos,
 `npm run sitio:proponer -- --pisar`.
 
+## 6 quater. Unificar las fotos (mismo fondo, tamaño y margen)
+
+`scripts/unificar-fotos.mjs` y `scripts/unificar-en-storage.mjs`. Las fotos vienen
+de tres lugares (Sinteplast, Kuwait y el sitio viejo) y cada una tiene su fondo,
+su encuadre y su luz. Para que el catálogo se vea parejo, **toda foto pasa por
+la misma función antes de subirse**: `unificar()`.
+
+```sh
+npm run fotos:unificar -- --dry-run                 # procesa y deja copias en imagenes/, NO sube
+npm run fotos:unificar                              # sube y reapunta (pide email y contraseña de un admin)
+npm run fotos:unificar -- --desde-respaldo          # rehace partiendo de los ORIGINALES
+```
+
+`fotos-proveedores.mjs aplicar` y `fotos-sitio.mjs aplicar` llaman a la misma
+función, así que las fotos nuevas salen ya unificadas.
+
+### Qué le hace a cada foto (sin IA, solo `sharp`)
+
+1. **Fondo a blanco.** El color del fondo se estima con la **mediana** de una
+   franja de 12 px en los bordes (la mediana no se deja engañar por un producto
+   que roza el borde) y se multiplica cada canal para que ese color pase a
+   blanco puro. Es el mismo principio que el balance de blancos de una cámara.
+   Después todo lo que queda casi blanco (≥ 232) se manda a 255, y con eso
+   desaparecen los degradados leves y las sombras suaves.
+2. **Encuadre.** Se busca el rectángulo que contiene todo lo que no es blanco y
+   se recorta a eso.
+3. **Tamaño.** El recorte se centra en un lienzo de **1000 × 1000** con **8 %**
+   de margen por lado y se guarda en WebP calidad 85.
+
+Lo que **no** hace: no cambia la luz del producto en sí (si una lata se
+fotografió más oscura, sigue más oscura), no endereza fotos tomadas en diagonal
+y no saca sombras fuertes. Eso exigiría recortar el producto con un modelo de IA
+y volver a iluminarlo, con riesgo de bordes raros. Para una foto realmente
+pareja hay que sacarla con fondo y luz fijos.
+
+### Dos cosas que costaron
+
+- **La transparencia hay que pintarla de blanco antes de todo.** Las fotos de
+  Kuwait son WebP con fondo transparente. Con `removeAlpha()` los píxeles
+  transparentes quedaban negros o grises, eso movía el recorte y la lata
+  terminaba corrida con una línea gris. Se usa `flatten({ background: "#fff" })`.
+  Afectaba a los 29 productos que comparten la foto de Línea Clásica.
+- **Agrandar una foto chica la pixela.** Las de Sinteplast llegan de 500 × 750 px
+  y el producto mide unos 460 px de alto, así que llenar el cuadro es estirarlas
+  casi al doble. Sinteplast no publica nada más grande. Por eso el agrandado
+  tiene **tope de 1,5×** con un realce leve de nitidez (`MAX_AMPLIACION`,
+  `NITIDEZ`). El costo: esas fotos ocupan menos lugar en el cuadro que una
+  lata de 1000 px. Es un compromiso entre nitidez y tamaño parejo; si se quiere
+  que llenen el cuadro, se sube el tope y se acepta la pixelación.
+
+### Cómo se rehace lo que ya está subido
+
+`unificar-en-storage.mjs` junta las direcciones **distintas** del bucket
+`productos` (una foto la comparten muchos artículos: 136 fotos cubrían 454
+productos), baja cada una, la unifica y la sube con un nombre nuevo (`u-…`). No
+pisa la anterior: sigue en Storage. Después reapunta los productos en una
+transacción.
+
+- **Respaldo antes de escribir.** Guarda `id` e `images` de cada producto en
+  `respaldos/products-images-<fecha>.json`. Si ya existe uno del día **no lo
+  pisa**: puede ser el estado original de antes de una corrida anterior. Volver
+  atrás es volver a escribir esas direcciones.
+- **`--desde-respaldo` existe para no agrandar dos veces.** Si se repitiera el
+  proceso sobre las fotos ya unificadas, se estaría estirando una foto que ya se
+  estiró. Con ese flag se parte de las direcciones **originales** del respaldo
+  más viejo, y solo para los productos que siguen apuntando a una foto `u-…`
+  (los que se cambiaron a mano no se tocan).
+- Un producto se reapunta solo si **todas** sus fotos del bucket se pudieron
+  reemplazar.
+
+### Aprobar propuestas: no confiar en el puntaje
+
+Los Excel de `fotos:proponer` y `sitio:proponer` marcan casi todo `REVISAR`, y
+con razón: el puntaje de parecido llega a 0,67 como máximo y **no separa lo
+bueno de lo malo**. Entre las propuestas había "Látex Azul Traful" → una foto de
+Enduido, "Masilla Trimas" → láminas plásticas y "Barniplast" → Barniz Ignífugo.
+Una foto equivocada en un catálogo mayorista es peor que no tener foto, así que
+se aprueban a ojo, **mirando la foto**, y solo cuando coinciden producto y marca.
+Una foto de línea (la lata de Brilloplast) sí sirve para todos los colores de esa
+línea. Al aplicar, las filas ya subidas se marcan `HECHO` para que un segundo
+`aplicar` no las repita.
+
+Estado al cerrar esta sección: **741 de 1230 productos con foto**. Los 489 que
+faltan no tienen foto en ninguna de las dos fuentes; están sobre todo en
+Pinturas (esmaltes por color, antióxidos y convertidores). La lista sale de la
+base: productos activos con `cardinality(images) = 0`.
+
+> **Detalles del entorno que conviene saber.** El prompt del script (`Email del
+> admin: `) no termina en salto de línea, así que parece que el script se colgó
+> cuando en realidad espera que se escriba. Y la versión ESM de la librería de
+> Excel necesita `XLSX.set_fs(fs)` (o leer/escribir con `fs` a mano) antes de
+> abrir o guardar archivos, o falla con "Cannot access file".
+
+---
+
 ## 7. Checkout por WhatsApp
 
 El número destino sale de la tabla `store_config` → `whatsapp_number` (solo dígitos,
@@ -1344,9 +1441,10 @@ o usá el selector ES/EN del header.
    "ve / no ve". El lugar donde se decide es `canSeePrices()` en
    `src/lib/auth.ts`: está en una función propia justamente para que el día que
    existan dos listas se cambie en un solo lugar.
-7. **Imágenes reales de producto** — empezado: `scripts/fotos-proveedores.mjs`
-   trae las de Sinteplast y Kuwait (sección 6 bis). Quedan afuera las marcas que
-   no publican catálogo con fotos y los artículos sueltos de ferretería.
+7. **Imágenes reales de producto** — avanzado: 741 de 1230 con foto, todas
+   unificadas (secciones 6 bis, 6 ter y 6 quater). Faltan 489: los esmaltes
+   sintéticos por color, los antióxidos y convertidores, y los artículos sueltos
+   de ferretería. Hay que sacarlas o pedírselas al proveedor.
 8. ~~**Borrar los `.json` viejos**~~ — hecho.
 9. **Usar el video en el hero** — el `.mp4` ya está renderizado
    (`public/video/hero-pintura.mp4`) pero la home sigue mostrando `HeroCanvas`.
