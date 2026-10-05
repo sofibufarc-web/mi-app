@@ -41,6 +41,8 @@ import { fileURLToPath } from "node:url";
 
 import postgres from "postgres";
 import sharp from "sharp";
+
+import { unificar } from "./unificar-fotos.mjs";
 import * as XLSX from "xlsx";
 
 /* La versión ESM de la librería de Excel no trae adentro el módulo de archivos
@@ -531,10 +533,7 @@ async function aplicar() {
       const original = fs.readFileSync(origen);
       /* `withoutEnlargement`: si el original es más chico que 1200 px no se
          agranda. Agrandar no inventa detalle, sólo peso y bordes borrosos. */
-      const webp = await sharp(original)
-        .resize({ width: ANCHO_MAXIMO, height: ANCHO_MAXIMO, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
+      const { final: webp } = await unificar(original); // fondo blanco, centrada, 1000 x 1000
 
       const sufijo = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const nombre = `sitio-${aSlug(ficha.nombre)}-${sufijo}.webp`;

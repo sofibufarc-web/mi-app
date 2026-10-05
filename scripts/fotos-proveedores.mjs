@@ -53,6 +53,8 @@ import { fileURLToPath } from "node:url";
 
 import postgres from "postgres";
 import sharp from "sharp";
+
+import { unificar } from "./unificar-fotos.mjs";
 import * as XLSX from "xlsx";
 
 /* SheetJS no toma el `fs` de Node solo cuando se lo importa como módulo ESM:
@@ -592,10 +594,9 @@ async function prepararFoto(url) {
   if (!r.ok) throw new Error(`la foto respondió ${r.status}`);
   const original = Buffer.from(await r.arrayBuffer());
 
-  const webp = await sharp(original)
-    .resize({ width: ANCHO_MAXIMO, height: ANCHO_MAXIMO, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 82 })
-    .toBuffer();
+  /* Fondo blanco, producto centrado y 1000 x 1000, igual que el resto del
+     catálogo (ver scripts/unificar-fotos.mjs). */
+  const { final: webp } = await unificar(original);
 
   return { webp, pesoOriginal: original.length };
 }

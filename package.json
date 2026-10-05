@@ -21,7 +21,8 @@
     "fotos:aplicar": "node --env-file=.env.local scripts/fotos-proveedores.mjs aplicar",
     "sitio:catalogo": "node --env-file=.env.local scripts/fotos-sitio.mjs catalogo",
     "sitio:proponer": "node --env-file=.env.local scripts/fotos-sitio.mjs proponer",
-    "sitio:aplicar": "node --env-file=.env.local scripts/fotos-sitio.mjs aplicar"
+    "sitio:aplicar": "node --env-file=.env.local scripts/fotos-sitio.mjs aplicar",
+    "fotos:unificar": "node --env-file=.env.local scripts/unificar-en-storage.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
