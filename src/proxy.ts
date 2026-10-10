@@ -111,7 +111,7 @@ export async function proxy(request: NextRequest) {
   // Ya logueado y entrando a /login → no tiene nada que hacer ahí.
   // Va al catálogo y no al panel porque acá todavía no sabemos si es admin; de
   // mandar a cada uno a su lugar se encarga `loginAction`, que sí lo sabe.
-  if (pathname === "/login" && haySesion) {
+  if ((pathname === "/login" || pathname === "/login/admin") && haySesion) {
     return finalizar(NextResponse.redirect(new URL("/", request.url)));
   }
 
@@ -132,7 +132,9 @@ export async function proxy(request: NextRequest) {
     (esRutaDeAdmin ||
       esRutaDeCliente ||
       // Con el flag en true, todo el catálogo pasa a ser privado.
-      (siteConfig.requireLoginForCatalog && pathname !== "/login"));
+      (siteConfig.requireLoginForCatalog &&
+        pathname !== "/login" &&
+        pathname !== "/login/admin"));
 
   if (rechazado) {
     /*
@@ -152,7 +154,9 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    const loginUrl = new URL("/login", request.url);
+    // El panel tiene su propio login (email + contraseña); el resto, el de
+    // clientes (solo contraseña).
+    const loginUrl = new URL(esRutaDeAdmin ? "/login/admin" : "/login", request.url);
     // Guardamos a dónde quería ir para volver ahí después del login.
     loginUrl.searchParams.set("next", `${pathname}${search}`);
     return finalizar(NextResponse.redirect(loginUrl));

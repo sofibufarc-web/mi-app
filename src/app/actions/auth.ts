@@ -1,9 +1,15 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { canManageStore } from "@/lib/auth";
-import { getUserById } from "@/lib/data-source";
+import {
+  clearLoginFailures,
+  countLoginFailures,
+  getUserById,
+  recordLoginFailure,
+} from "@/lib/data-source";
 import { getT } from "@/lib/request-context";
 import { supabaseAuthIsConfigured } from "@/lib/supabase/client-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -32,17 +38,46 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  */
 export type LoginState = { error: string | null; email: string };
 
-export async function loginAction(
-  _prevState: LoginState,
-  formData: FormData,
+/** Intentos fallidos permitidos por IP dentro de la ventana, antes de frenar. */
+const MAX_INTENTOS = 5;
+const VENTANA_MINUTOS = 15;
+
+/**
+ * La IP del visitante, para contar sus intentos fallidos.
+ *
+ * Vercel pone la IP real en `x-forwarded-for` (si vienen varias separadas por
+ * coma, la primera es la del cliente). En local no existe y cae a "local".
+ */
+async function ipDelVisitante(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+}
+
+/**
+ * El camino común a los dos logins: freno de intentos, Supabase, perfil activo
+ * y redirect. Solo cambia de dónde sale el email.
+ */
+async function iniciarSesion(
+  email: string,
+  password: string,
+  next: string,
+  esAdmin: boolean,
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "");
   const t = await getT();
+  const mensajeError = esAdmin ? t.login.adminError : t.login.error;
 
   if (!supabaseAuthIsConfigured()) {
     return { error: t.login.notConfigured, email };
+  }
+
+  /*
+   * Freno de fuerza bruta. Con una contraseña compartida, adivinarla es el
+   * ataque obvio. Pasados MAX_INTENTOS fallos en la ventana, ni siquiera se le
+   * pregunta a Supabase: así el intento 6 no puede acertar por suerte.
+   */
+  const ip = await ipDelVisitante();
+  if ((await countLoginFailures(ip, VENTANA_MINUTOS)) >= MAX_INTENTOS) {
+    return { error: t.login.tooManyAttempts, email };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -60,7 +95,8 @@ export async function loginAction(
    * y recién entonces atacar las contraseñas.
    */
   if (error || !data.user) {
-    return { error: t.login.error, email };
+    await recordLoginFailure(ip);
+    return { error: mensajeError, email };
   }
 
   // La cuenta es válida para Supabase, pero para esta app además tiene que tener
@@ -69,8 +105,11 @@ export async function loginAction(
   const perfil = await getUserById(data.user.id);
   if (!perfil || !perfil.active) {
     await supabase.auth.signOut();
-    return { error: t.login.error, email };
+    await recordLoginFailure(ip);
+    return { error: mensajeError, email };
   }
+
+  await clearLoginFailures(ip);
 
   // A dónde va después de entrar:
   // - si venía de una página protegida, vuelve ahí;
@@ -86,6 +125,43 @@ export async function loginAction(
   // `redirect()` funciona lanzando una excepción que Next atrapa, así que tiene
   // que quedar afuera de cualquier try/catch.
   redirect(destino);
+}
+
+/**
+ * Login de CLIENTES: solo contraseña.
+ *
+ * El email de la cuenta compartida sale de `CLIENT_LOGIN_EMAIL` (variable de
+ * entorno del servidor) y el visitante nunca lo ve. Para Supabase sigue siendo
+ * un login normal de email + contraseña; lo único que cambia es quién pone el
+ * email.
+ */
+export async function loginClienteAction(
+  _prevState: LoginState,
+  formData: FormData,
+): Promise<LoginState> {
+  const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const email = process.env.CLIENT_LOGIN_EMAIL?.trim() ?? "";
+
+  if (!email) {
+    const t = await getT();
+    return { error: t.login.clientNotConfigured, email: "" };
+  }
+
+  // El email compartido no vuelve al formulario: devolvemos "" para no filtrarlo.
+  const resultado = await iniciarSesion(email, password, next, false);
+  return { ...resultado, email: "" };
+}
+
+/** Login de ADMIN: email + contraseña, desde `/login/admin`. */
+export async function loginAction(
+  _prevState: LoginState,
+  formData: FormData,
+): Promise<LoginState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "");
+  return iniciarSesion(email, password, next, true);
 }
 
 export async function logoutAction() {

@@ -12,12 +12,10 @@ type Props = {
 };
 
 /**
- * Login único para los dos roles.
+ * Login de CLIENTES: una sola contraseña, sin usuario.
  *
- * El mismo formulario sirve para el cliente (que con esto destraba los
- * precios) y para el admin (que entra al panel). Quién es cada uno lo decide
- * `loginAction` comparando contra las dos credenciales configuradas, y de ahí
- * sale también a dónde se lo manda después.
+ * El admin entra por `/login/admin`, con email y contraseña. Hay un link chico
+ * al pie, discreto: el cliente no tiene por qué mirarlo.
  */
 export default async function LoginPage({ searchParams }: Props) {
   const query = await searchParams;
@@ -47,7 +45,7 @@ export default async function LoginPage({ searchParams }: Props) {
           <h1 className="text-lg font-bold tracking-tight">{t.login.title}</h1>
           <p className="mt-1 mb-6 text-sm text-ink-soft">{t.login.subtitle}</p>
 
-          <LoginForm next={next} t={t} />
+          <LoginForm next={next} t={t} modo="cliente" />
         </div>
 
         <div className="animate-fade-up mt-5 rounded-xl border border-line bg-card/60 p-4 [animation-delay:120ms]">
@@ -62,6 +60,10 @@ export default async function LoginPage({ searchParams }: Props) {
         <p className="mt-5 text-center text-xs text-ink-soft">
           <Link href="/" className="underline transition hover:text-brand">
             {t.login.back}
+          </Link>
+          {" · "}
+          <Link href="/login/admin" className="underline transition hover:text-brand">
+            {t.login.adminLink}
           </Link>
         </p>
       </div>

@@ -734,3 +734,66 @@ export async function countActiveAdmins(exceptId?: string): Promise<number> {
       and id is distinct from ${exceptId ?? null}`;
   return Number(count);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Contraseña compartida de clientes e intentos de login                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Cambia la contraseña de una cuenta de Supabase Auth y cierra sus sesiones.
+ *
+ * La API de administración de Supabase lo haría, pero pide la clave secreta del
+ * proyecto, que acá no se usa. Se escribe el hash bcrypt directo en
+ * `auth.users`, que es el mismo formato que guarda Supabase (mismo costo 10).
+ * Es lo que hace `scripts/cambiar-password.mjs`.
+ *
+ * Cerrar las sesiones va en la misma transacción: si cambiara la clave y
+ * fallara el cierre, quedarían sesiones vivas con la clave vieja. Para una
+ * cuenta compartida es justo lo que se busca al cambiarla: que quien tenía la
+ * anterior quede afuera.
+ *
+ * Devuelve `false` si no hay ninguna cuenta con ese email.
+ */
+export async function setAuthPasswordByEmail(
+  email: string,
+  password: string,
+): Promise<boolean> {
+  return sql.begin(async (tx) => {
+    const filas = await tx`
+      update auth.users
+      set encrypted_password = extensions.crypt(${password}, extensions.gen_salt('bf', 10)),
+          updated_at = now()
+      where lower(email) = lower(${email})
+      returning id`;
+    if (filas.length === 0) return false;
+
+    const id = filas[0].id as string;
+    await tx`delete from auth.refresh_tokens where user_id = ${id}::text`;
+    await tx`delete from auth.sessions where user_id = ${id}`;
+    return true;
+  });
+}
+
+/** Cuántos intentos fallidos tuvo esta IP en los últimos `minutos`. */
+export async function countLoginFailures(
+  ip: string,
+  minutos: number,
+): Promise<number> {
+  const filas = await sql<{ n: number }[]>`
+    select count(*)::int as n
+    from public.login_intentos
+    where ip = ${ip}
+      and creado_en > now() - make_interval(mins => ${minutos})`;
+  return filas[0]?.n ?? 0;
+}
+
+/** Anota un intento fallido y, de paso, borra los de más de un día. */
+export async function recordLoginFailure(ip: string): Promise<void> {
+  await sql`insert into public.login_intentos (ip) values (${ip})`;
+  await sql`delete from public.login_intentos where creado_en < now() - interval '1 day'`;
+}
+
+/** Perdona los intentos de esta IP: se llama cuando entra bien. */
+export async function clearLoginFailures(ip: string): Promise<void> {
+  await sql`delete from public.login_intentos where ip = ${ip}`;
+}

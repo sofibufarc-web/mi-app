@@ -877,6 +877,32 @@ rol se lee de la base en cada request, así que el cambio es inmediato.
 > visitante anónimo no paga nada: sin cookie, la librería contesta al instante
 > sin salir a la red. Medido: las rutas protegidas rechazan a un anónimo en 2 ms.
 
+### Acceso de clientes: una sola contraseña, sin usuario
+
+Pedido del cliente de la tienda: los clientes entran **solo con contraseña**.
+
+- Existe **una cuenta compartida** de rol `cliente`. Su email vive en la variable
+  de servidor `CLIENT_LOGIN_EMAIL` (sin `NEXT_PUBLIC_`) y el visitante nunca lo
+  ve. `/login` pide solo la contraseña y `loginClienteAction` completa el email.
+  Para Supabase sigue siendo un login normal de email + contraseña.
+- El **admin entra por `/login/admin`** con email y contraseña propios. Una
+  clave que conocen todos no puede abrir el panel. El proxy y `admin/layout.tsx`
+  mandan ahí a quien intente entrar a `/admin` sin sesión.
+- **Cambiar la clave:** botón en `/admin/usuarios` (`changeClientPasswordAction`).
+  Escribe el hash bcrypt en `auth.users` por la conexión a Postgres
+  (`setAuthPasswordByEmail` en `data-source.ts`), igual que
+  `scripts/cambiar-password.mjs`, porque la API de Supabase pediría la clave
+  secreta. Cierra las sesiones de la cuenta: quien tenía la clave vieja queda
+  afuera. Se niega a tocar la cuenta si su rol no es `cliente`.
+- **Freno de fuerza bruta:** con una clave compartida, adivinarla es el ataque
+  obvio. Después de 5 fallos por IP en 15 minutos no se consulta a Supabase
+  (tabla `login_intentos`, migración `20261009120000`). Es propio y no el de
+  Supabase porque Supabase ve la IP de Vercel, no la del visitante.
+- **Lo que se pierde** y el cliente tiene que saber: si la clave se filtra, se
+  ven los precios mayoristas; no se sabe quién entró; no se puede dar de baja a
+  un solo cliente. Las cuentas individuales de `/admin/usuarios` siguen
+  funcionando (por `/login/admin`).
+
 ### Restablecer contraseñas
 
 El panel **no puede** ponerle una contraseña a otra cuenta: para eso haría falta

@@ -3,7 +3,11 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { loginAction, type LoginState } from "@/app/actions/auth";
+import {
+  loginAction,
+  loginClienteAction,
+  type LoginState,
+} from "@/app/actions/auth";
 import type { Dictionary } from "@/lib/i18n";
 
 /**
@@ -49,11 +53,32 @@ function EyeIcon({ crossed }: { crossed: boolean }) {
   );
 }
 
-export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
-  const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {
-    error: null,
-    email: "",
-  });
+/**
+ * Un solo formulario para los dos accesos.
+ *
+ * - `cliente`: solo contraseña. Es lo que pidió el cliente de la tienda.
+ * - `admin`: email + contraseña, para entrar al panel.
+ *
+ * Cada modo llama a una Server Action distinta; el modo NO viaja como dato del
+ * formulario, porque entonces cualquiera podría cambiarlo desde el inspector.
+ */
+export function LoginForm({
+  next,
+  t,
+  modo = "cliente",
+}: {
+  next: string;
+  t: Dictionary;
+  modo?: "cliente" | "admin";
+}) {
+  const esAdmin = modo === "admin";
+  const [state, formAction] = useActionState<LoginState, FormData>(
+    esAdmin ? loginAction : loginClienteAction,
+    {
+      error: null,
+      email: "",
+    },
+  );
 
   /**
    * El campo de email es CONTROLADO (su valor sale de este estado de React).
@@ -81,6 +106,7 @@ export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="next" value={next} />
 
+      {esAdmin && (
       <label className="flex flex-col gap-1">
         <span className="text-xs font-semibold text-ink-soft">{t.login.email}</span>
         <input
@@ -96,6 +122,7 @@ export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
           className={fieldClass}
         />
       </label>
+      )}
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-semibold text-ink-soft">
@@ -110,6 +137,8 @@ export function LoginForm({ next, t }: { next: string; t: Dictionary }) {
             type={showPassword ? "text" : "password"}
             required
             autoComplete="current-password"
+            // En modo cliente no hay campo de email, así que el foco va acá.
+            autoFocus={!esAdmin}
             // pr-11 reserva el lugar del botón para que el texto no se le meta abajo.
             className={`${fieldClass} pr-11`}
           />

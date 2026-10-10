@@ -358,7 +358,15 @@ const es = {
 
   login: {
     title: "Ingresar",
-    subtitle: "Usá el email y la contraseña que te dio tu vendedor.",
+    subtitle: "Ingresá la contraseña que te dio tu vendedor.",
+    adminTitle: "Acceso administrador",
+    adminSubtitle: "Usá tu email y tu contraseña de administrador.",
+    adminLink: "Acceso administrador",
+    clientLink: "Volver al acceso de clientes",
+    clientNotConfigured:
+      "El acceso de clientes no está configurado. Falta la variable CLIENT_LOGIN_EMAIL.",
+    tooManyAttempts:
+      "Demasiados intentos. Esperá unos minutos y volvé a probar.",
     email: "Email",
     password: "Contraseña",
     showPassword: "Mostrar contraseña",
@@ -366,7 +374,8 @@ const es = {
     submit: "Ingresar",
     submitting: "Ingresando…",
     back: "Volver al catálogo",
-    error: "Email o contraseña incorrectos.",
+    error: "Contraseña incorrecta.",
+    adminError: "Email o contraseña incorrectos.",
     notConfigured:
       "El acceso no está configurado. Faltan las variables de Supabase.",
     whyTitle: "¿Para qué sirve?",
@@ -694,7 +703,14 @@ const en = {
 
   login: {
     title: "Sign in",
-    subtitle: "Use the email and password your sales rep gave you.",
+    subtitle: "Enter the password your sales rep gave you.",
+    adminTitle: "Administrator access",
+    adminSubtitle: "Use your administrator email and password.",
+    adminLink: "Administrator access",
+    clientLink: "Back to customer access",
+    clientNotConfigured:
+      "Customer access is not configured. The CLIENT_LOGIN_EMAIL variable is missing.",
+    tooManyAttempts: "Too many attempts. Wait a few minutes and try again.",
     email: "Email",
     password: "Password",
     showPassword: "Show password",
@@ -702,7 +718,8 @@ const en = {
     submit: "Sign in",
     submitting: "Signing in…",
     back: "Back to the catalog",
-    error: "Wrong email or password.",
+    error: "Wrong password.",
+    adminError: "Wrong email or password.",
     notConfigured: "Access is not configured. Supabase variables are missing.",
     whyTitle: "What is this for?",
     whyText:

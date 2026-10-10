@@ -14,6 +14,7 @@ import {
   deleteUser,
   getUserByEmail,
   getUserById,
+  setAuthPasswordByEmail,
   setUserActive,
   setUserRole,
   updateStoreConfig,
@@ -450,4 +451,68 @@ export async function deleteUserAction(
 
   revalidatePath("/admin/usuarios");
   return { error: null, ok: true, message: `Cuenta "${usuario.email}" eliminada.` };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contraseña compartida de los clientes                                       */
+/* -------------------------------------------------------------------------- */
+
+/** Más exigente que la de una cuenta personal: la conocen muchas personas. */
+const LARGO_MINIMO_CLAVE_CLIENTES = 10;
+
+/**
+ * Cambia la contraseña con la que entran TODOS los clientes.
+ *
+ * Qué pasa al guardar: la clave vieja deja de funcionar en el acto y se cierran
+ * las sesiones abiertas de la cuenta compartida, así que los clientes tendrán
+ * que volver a entrar con la nueva. Es a propósito: es la forma de dejar afuera
+ * a alguien que tenía la clave anterior.
+ */
+export async function changeClientPasswordAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const permiso = await exigirAdmin();
+  if ("error" in permiso) return { error: permiso.error };
+
+  const email = process.env.CLIENT_LOGIN_EMAIL?.trim() ?? "";
+  if (!email) {
+    return {
+      error:
+        "Falta la variable CLIENT_LOGIN_EMAIL en el servidor: indica qué cuenta usan los clientes.",
+    };
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const repetida = String(formData.get("repeat") ?? "");
+
+  if (password.length < LARGO_MINIMO_CLAVE_CLIENTES) {
+    return {
+      error: `La contraseña tiene que tener al menos ${LARGO_MINIMO_CLAVE_CLIENTES} caracteres.`,
+    };
+  }
+  if (password !== repetida) return { error: "Las contraseñas no coinciden." };
+
+  // Esta pantalla solo toca la cuenta de clientes. Si por un error de
+  // configuración CLIENT_LOGIN_EMAIL apuntara a un admin, cambiaría la
+  // contraseña del panel por una compartida: se corta acá.
+  const cuenta = await getUserByEmail(email);
+  if (!cuenta) {
+    return {
+      error: `No existe la cuenta ${email}. Crearla con: npm run db:usuario -- ${email} cliente`,
+    };
+  }
+  if (cuenta.role !== "cliente") {
+    return { error: `La cuenta ${email} no es de rol cliente; no se toca.` };
+  }
+
+  const cambiada = await setAuthPasswordByEmail(email, password);
+  if (!cambiada) return { error: "No se pudo cambiar la contraseña." };
+
+  return {
+    error: null,
+    ok: true,
+    message:
+      "Contraseña cambiada. Los clientes que estaban conectados tendrán que entrar de nuevo con la nueva.",
+  };
 }

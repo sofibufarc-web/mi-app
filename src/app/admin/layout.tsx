@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const usuario = session ? await getUserById(session.userId) : null;
 
   if (!usuario || !usuario.active || usuario.role !== "admin") {
-    redirect("/login?next=/admin");
+    redirect("/login/admin?next=/admin");
   }
 
   const [t, theme] = await Promise.all([getT(), getTheme()]);
