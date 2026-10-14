@@ -17,7 +17,7 @@ const APLICAR = process.argv.includes("--aplicar");
 const sinTildes = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 const SINTEPLAST =
-  /recuplast|brilloplast|satinplast|barniplast|sellaplast|foresta|converplast|proterox|recubrick|recufloor|recublock|recuplast|duralux|duralatex|madeplast|ferroxin|magiplast|sintevial|sintenvial|marplast|acrilplast|fibreplast|brillospray|sinteplast|ton plast|aike|latizador|atlantico|santinplast|pizarron sinteplast/;
+  /recuplast|brilloplast|satinplast|barniplast|sellaplast|foresta|converplast|proterox|recubrick|recufloor|recublock|recuplast|duralux|duralatex|madeplast|ferroxin|magiplast|sintevial|sintenvial|marplast|acrilplast|fibreplast|brillospray|sinteplast|ton plast|aike|latizador|atlantico|santinplast|pizarron sinteplast|recumix|sintesmal|latex (interior|interior\/exterior) king|latex profesional/;
 
 function marcaDe(nombre, categoria) {
   const n = sinTildes(nombre);

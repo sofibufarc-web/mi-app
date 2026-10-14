@@ -18,6 +18,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import postgres from "postgres";
 
+import { limpiarEntrada } from "./lib/ficha-datos.mjs";
 import { fichaHtml, pieHtml } from "./lib/ficha-html.mjs";
 
 const args = process.argv.slice(2);
@@ -27,7 +28,9 @@ const valor = (flag) => {
 };
 const SOLO = valor("--solo")?.split(",").map((s) => s.trim());
 const PNG = args.includes("--png");
-const SALIDA = path.resolve("fichas-pdf");
+const DESDE_JSON = valor("--desde-json")?.split(",");
+// En modo previsualización (--desde-json) NO se toca la base y los PDF van a otra carpeta.
+const SALIDA = path.resolve(DESDE_JSON ? "fichas-pdf-previa" : "fichas-pdf");
 fs.mkdirSync(SALIDA, { recursive: true });
 
 const sql = postgres(process.env.DIRECT_URL, { prepare: false });
@@ -39,12 +42,33 @@ const info = {
   whatsapp: tienda.whatsapp_number.replace(/^549?/, "").replace(/^(\d{3})(\d{3})(\d+)$/, "$1 $2-$3"),
 };
 
-const padres = await sql`
-  select g.*, c.name as categoria from public.product_parents g
-  left join public.categories c on c.id = g.category_id
-  where g.active
-    and (jsonb_array_length(coalesce(g.technical->'datos','[]')) > 0 or g.description <> '')
-  order by g.name`;
+let padres;
+if (DESDE_JSON) {
+  const entradas = DESDE_JSON.flatMap((f) => JSON.parse(fs.readFileSync(f, "utf8"))).filter((e) => e.confianza === "alta");
+  const base = await sql`
+    select g.*, c.name as categoria from public.product_parents g
+    left join public.categories c on c.id = g.category_id
+    where g.id = any(${entradas.map((e) => e.parentId)}) order by g.name`;
+  const porId = new Map(entradas.map((e) => [e.parentId, limpiarEntrada(e)]));
+  // Se superponen los datos de la entrada sobre el producto, solo en memoria.
+  padres = base.map((g) => {
+    const d = porId.get(g.id);
+    return {
+      ...g,
+      description: g.description || d.descripcion,
+      usage: d.usage ?? g.usage,
+      finish: d.finish ?? g.finish,
+      technical: { ...g.technical, datos: d.datos, uso: d.pasos, documentos: d.docs, fuentes: d.fuentes },
+    };
+  });
+} else {
+  padres = await sql`
+    select g.*, c.name as categoria from public.product_parents g
+    left join public.categories c on c.id = g.category_id
+    where g.active
+      and (jsonb_array_length(coalesce(g.technical->'datos','[]')) > 0 or g.description <> '')
+    order by g.name`;
+}
 
 const lista = padres.filter((p) => !SOLO || SOLO.includes(p.slug));
 console.log(`Fichas a generar: ${lista.length}`);
