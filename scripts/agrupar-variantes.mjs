@@ -279,6 +279,86 @@ function interpretar(p, categoria) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Reglas manuales                                                             */
+/* -------------------------------------------------------------------------- */
+/*
+ * Casos que la heurística no resuelve bien. Se aplican por CÓDIGO (más seguro
+ * que por nombre) y pisan lo deducido: { padre, color?, size? }. Lo que no se
+ * indica, se toma de la heurística.
+ *
+ * Códigos duplicados: el proveedor lista dos veces algunos artículos con otro
+ * código (la serie 38xxx repite artículos de la serie 1xxx). Para que las dos
+ * variantes se distingan, al segundo se le agrega el código al tamaño. Conviene
+ * confirmar con el proveedor si en realidad son el mismo artículo.
+ */
+const HEX_EXTRA = {
+  "Rojo Borgoña": "#7a1f2b",
+  "Negro Ébano": "#1a1a1a",
+  "Gris Cemento": "#9a9a95",
+  Kiwi: "#8ab62f",
+  "Negro Brillante": "#111111",
+  "Fondo Gris": "#9a9fa5",
+  "Hierro Antiguo": "#4a4038",
+  Común: "#d8d4ca",
+  Microcemento: "#b9b4a8",
+};
+const hexDe = (color) => COLORES[color] ?? HEX_EXTRA[color] ?? null;
+
+const MANUALES = new Map();
+function regla(padre, items) {
+  for (const [sku, extra] of Object.entries(items)) MANUALES.set(sku, { padre, ...extra });
+}
+
+// Látex Interior/Exterior: cada color estaba como producto aparte.
+regla("Látex Interior/Exterior", {
+  1362: { color: "Ocre" },
+  1361: { color: "Rojo Borgoña" },
+  1358: { color: "Negro Ébano" },
+  1359: { color: "Gris Cemento" },
+  1363: { color: "Azul Traful" },
+  1529: { color: "Azul" },
+  1528: { color: "Grupo 2 Colores" },
+  1527: { color: "Grupo 3 Colores" },
+  1364: { color: "Kiwi" },
+  1360: { color: "Marrón Africano" },
+});
+
+// Recuplast Hidro: la terminación (brillante / satinado) va en el nombre del color.
+regla("Recuplast Hidro", {
+  3068: { color: "Aluminio" }, 3069: { color: "Aluminio" },
+  3064: { color: "Fondo Gris" }, 3065: { color: "Fondo Gris" }, 3066: { color: "Fondo Gris" },
+  3050: { color: "Blanco Brillante" }, 3049: { color: "Blanco Brillante" }, 3051: { color: "Blanco Brillante" },
+  3054: { color: "Blanco Satinado" }, 3053: { color: "Blanco Satinado" }, 3055: { color: "Blanco Satinado" },
+  3058: { color: "Negro Brillante" }, 3057: { color: "Negro Brillante" }, 3059: { color: "Negro Brillante" },
+  3062: { color: "Negro Satinado" }, 3061: { color: "Negro Satinado" }, 3063: { color: "Negro Satinado" },
+});
+
+// Recuplast Base: la común y la de microcemento son dos versiones del mismo producto.
+regla("Recuplast Base", {
+  3079: { color: "Común", size: "25 kg" },
+  3081: { color: "Microcemento", size: "25 kg" },
+});
+
+regla("Ferroxin", {
+  1574: { color: "Plata" }, 1575: { color: "Plata" },
+  1565: { color: "Hierro Antiguo" }, 1566: { color: "Hierro Antiguo" },
+});
+
+// Thinner y Dilu-Rras: el envase «suelto» es una variante más del mismo producto.
+regla("Thinner", {
+  1861: { size: "500 cm3" }, 38480: { size: "500 cm3 · 38480" },
+  1874: { size: "700 cm3" },
+  1890: { size: "1 lt" }, 1862: { size: "1 lt suelto" }, 38481: { size: "1 lt suelto · 38481" },
+  1870: { size: "5 lt" },
+});
+regla("Dilu Rras", {
+  1863: { size: "500 cm3" }, 38478: { size: "500 cm3 · 38478" },
+  1893: { size: "700 cm3" },
+  1891: { size: "1 lt" }, 1864: { size: "1 lt suelto" }, 38479: { size: "1 lt suelto · 38479" },
+  1869: { size: "5 lt" },
+});
+
+/* -------------------------------------------------------------------------- */
 /* Armado de grupos                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -294,6 +374,13 @@ const grupos = new Map(); // clave -> { nombre, categoryId, categoria, items: []
 for (const p of productos) {
   const categoria = p.categoria ?? "";
   const r = interpretar(p, categoria);
+  const manual = MANUALES.get(p.sku);
+  if (manual) {
+    r.base = manual.padre;
+    if (manual.color !== undefined) r.color = manual.color;
+    if (manual.size !== undefined) r.size = manual.size;
+    r.avisos = r.avisos.filter((a) => a !== "sin tamaño");
+  }
   const clave = `${p.category_id ?? "-"}|${norm(r.base)}`;
   if (!grupos.has(clave)) {
     grupos.set(clave, { nombre: r.base, categoryId: p.category_id, categoria, items: [] });
@@ -433,7 +520,7 @@ await sql.begin(async (tx) => {
         update public.products
         set parent_id = ${padre.id},
             color = ${it.color || null},
-            color_hex = ${it.color ? COLORES[it.color] : null},
+            color_hex = ${it.color ? hexDe(it.color) : null},
             size_label = ${it.size || null}
         where id = ${it.p.id}`;
     }
