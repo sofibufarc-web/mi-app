@@ -162,6 +162,8 @@ export type TechnicalSheet = {
   documentos?: { label: string; url: string }[];
   /** ids de productos (variantes) que se usan junto con este. */
   complementarios?: string[];
+  /** Direcciones de donde salieron los datos (fabricante). */
+  fuentes?: string[];
 };
 
 export type ProductUsage = "interior" | "exterior" | "ambos";

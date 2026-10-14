@@ -24,7 +24,9 @@
     "sitio:aplicar": "node --env-file=.env.local scripts/fotos-sitio.mjs aplicar",
     "fotos:unificar": "node --env-file=.env.local scripts/unificar-en-storage.mjs",
     "lote:plantilla": "node --env-file=.env.local scripts/fotos-lote.mjs plantilla",
-    "lote:aplicar": "node --env-file=.env.local scripts/fotos-lote.mjs aplicar"
+    "lote:aplicar": "node --env-file=.env.local scripts/fotos-lote.mjs aplicar",
+    "fichas:pdf": "node --env-file=.env.local scripts/fichas-pdf.mjs",
+    "fichas:subir": "node --env-file=.env.local scripts/fichas-subir.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -46,6 +48,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "playwright": "^1.63.0",
     "remotion": "^4.0.520",
     "sharp": "^0.35.4",
     "supabase": "^2.117.0",
