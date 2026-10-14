@@ -96,11 +96,16 @@ for (const archivo of pdfs) {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/pdf",
       "Cache-Control": "31536000",
-      "x-upsert": "true",
+      /* Sin `x-upsert`: para «reemplazar» Storage necesita poder LEER el archivo
+         y este bucket no tiene política de lectura (es público, se lee por URL).
+         Con esa opción rechaza la subida con «violates row-level security». */
     },
     body: fs.readFileSync(path.join(CARPETA, archivo)),
   });
-  if (!res.ok) {
+  /* 409 = ese archivo (mismo nombre y fecha) ya estaba subido de una corrida
+     anterior: no es un error, solo se vuelve a enlazar. */
+  const yaEstaba = res.status === 409 || /already exists|duplicate/i.test(await res.clone().text());
+  if (!res.ok && !yaEstaba) {
     fallas.push(`${slug}: ${res.status} ${(await res.text()).slice(0, 120)}`);
     continue;
   }
