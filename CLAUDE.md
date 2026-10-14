@@ -43,18 +43,26 @@ compactas y densas (es un catálogo de reposición, no una tienda de moda).
 
 ### Paleta
 
-Extraída del CSS de wiedmer.com.ar.
+Rediseño visual (`rediseno-visual.md`): **modo día por defecto**, azul
+institucional y un único acento naranja.
 
 | Token | Hex | Uso |
 | --- | --- | --- |
-| `brand` | `#113bc2` | Azul principal: botones, links, precios, badges |
-| `brand-dark` | `#0d2d94` | Hover de botones, header |
+| `page` | `#fafaf7` | Fondo principal (blanco cálido) |
+| `surface` | `#f1f3f6` | Secciones alternas, inputs |
+| `brand` | `#1e3a8a` | Azul Wiedmer: logo, títulos, menú activo |
+| `brand-dark` | `#172e6e` | Hover del azul |
 | `brand-darker` | `#07184d` | Footer, fondos oscuros |
-| `ink` | `#191919` | Texto principal |
-| `ink-soft` | `#5a6475` | Texto secundario, descripciones |
-| `line` | `#e8e8e8` | Bordes, separadores |
-| `surface` | `#f7f8fa` | Fondo de secciones, cards |
-| `white` | `#ffffff` | Fondo base |
+| `accent` | `#f97316` | Naranja obra: **solo** botones principales y "Agregar" |
+| `accent-text` | `#c2410c` | El naranja cuando es texto (precios): `accent` solo da ~2,8:1 de contraste |
+| `ink` | `#1f2937` | Grafito: texto principal |
+| `ink-soft` | `#5a6475` | Texto secundario |
+| `line` | `#e5e7eb` | Bordes, separadores |
+
+Tipografías: títulos (`h1`–`h3`) en **Archivo**, texto en Libre Franklin y
+códigos de producto en **JetBrains Mono** (`font-mono`).
+Botones: clases `btn-primary` (naranja, brillo + flecha `.btn-arrow`) y
+`btn-secondary` (contorno azul) en `globals.css`.
 
 En Tailwind v4 estos colores se declaran en `src/app/globals.css` dentro de
 `@theme`, lo que genera automáticamente utilidades como `bg-brand`,
@@ -1470,6 +1478,46 @@ o usá el selector ES/EN del header.
   > `src/lib/supabase/`, que es el código del login, y el deploy falla con
   > siete "Module not found". En local no se nota, porque este archivo solo
   > actúa durante el deploy. Ya pasó una vez.
+
+---
+
+## 8 bis. Rediseño visual: producto padre + variantes
+
+Implementa `rediseno-visual.md` (modo día, acento naranja, catálogo agrupado).
+
+**Modelo.** Cada fila de `products` sigue siendo una variante (su código, precio
+y stock). Se le agregó un padre: tabla `product_parents` y, en `products`,
+`parent_id`, `color`, `color_hex`, `size_label` (migración
+`20261014120000_productos_padre_y_variantes.sql`, solo agrega). La importación
+de Excel por código no cambió. El catálogo, la búsqueda y la ficha listan
+**padres** (`getParents`, `getParentBySlug` en `data-source.ts`).
+
+- `scripts/agrupar-variantes.mjs` deduce padre + color + tamaño del nombre y
+  deja `equivalencias-variantes.xlsx` para revisar. Sin `--aplicar` solo informa.
+  Idempotente; conserva marca, descripción y ficha técnica de los padres.
+  Estado: 1230 códigos → 434 padres (Pinturas: 655 → 142).
+- `scripts/marcas-padres.mjs` completa `brand` por reglas de nombre.
+- Un producto **activo sin padre** no saldría en el catálogo: `upsertProduct` le
+  crea uno propio. Los códigos nuevos de una lista de precios llegan inactivos y
+  sin padre: quedan en `/admin/pendientes` hasta asignarlos.
+- `/producto/<slug>?codigo=36230`: cada variante tiene su URL. Los enlaces viejos
+  (slug de un artículo) redirigen al padre con el código elegido.
+- **Muro de precios:** `VariantPicker` recibe `price` solo si `showPrices`; la
+  carpeta técnica (`TechnicalTabs`) solo se renderiza con sesión. `/api/buscar`
+  nunca devuelve precios.
+- Carpeta técnica por padre (`technical` jsonb): se edita en `/admin/fichas`;
+  los PDF van al bucket `productos` (migración `20261014130000_storage_pdfs.sql`).
+- Catálogo paginado de a 24 (`?pagina=`), filtros laterales por marca,
+  presentación, color, uso y terminación.
+- `<ViewTransition name="prod-<id>">` en la foto de la tarjeta y de la ficha.
+- Datos institucionales que NO se inventaron (`siteConfig.company`, todos
+  `null`): año de fundación, razón social, CUIT, redes, vendedor, foto del
+  depósito. La interfaz los omite hasta que se carguen.
+- El inicio vive en `src/components/home/` (un componente por sección).
+- `Reveal` dispara con `threshold: 0` y margen positivo: con un porcentaje, un
+  bloque más alto que la pantalla nunca aparecía.
+- Los mosaicos de CARTO piden clave de API ("API KEY REQUIRED"): el mapa usa
+  OpenStreetMap con un filtro CSS.
 
 ---
 

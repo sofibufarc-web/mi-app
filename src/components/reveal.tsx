@@ -53,11 +53,13 @@ export function Reveal({
         observer.disconnect();
       },
       {
-        // Dispara cuando asoma un 10% del elemento…
-        threshold: 0.1,
-        // …y con 80px de margen inferior, para que la animación arranque un
-        // toque antes de que el elemento quede a la vista y no se vea tarde.
-        rootMargin: "0px 0px -80px 0px",
+        // Dispara apenas asoma UN píxel. Con un porcentaje (antes 10%), un
+        // bloque más alto que la pantalla podía no llegar nunca al umbral y
+        // quedaba invisible: de ahí los "bloques vacíos".
+        threshold: 0,
+        // Margen POSITIVO: la animación arranca 120px antes de que el
+        // elemento entre en pantalla, así ya está hecha cuando se lo ve.
+        rootMargin: "0px 0px 120px 0px",
       },
     );
 

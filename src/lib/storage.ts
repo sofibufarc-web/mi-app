@@ -65,6 +65,17 @@ function faltaElBucket(mensaje: string): boolean {
 export async function subirImagen(
   file: File,
 ): Promise<{ url: string } | { error: string }> {
+  return subirArchivo(file);
+}
+
+/** Igual que `subirImagen`, para PDF (fichas técnicas, hojas de seguridad). */
+export async function subirDocumento(
+  file: File,
+): Promise<{ url: string } | { error: string }> {
+  return subirArchivo(file);
+}
+
+async function subirArchivo(file: File): Promise<{ url: string } | { error: string }> {
   const supabase = await createSupabaseServerClient();
   const nombre = nombreSeguro(file.name);
 
@@ -92,7 +103,7 @@ export async function subirImagen(
     // "new row violates row-level security policy" = la sesión no es de un
     // admin activo. Se traduce, porque el mensaje crudo no le dice nada a nadie.
     if (/row-level security/i.test(error.message)) {
-      return { error: "Tu sesión no tiene permiso para subir imágenes." };
+      return { error: "Tu sesión no tiene permiso para subir archivos." };
     }
     return { error: `Supabase Storage rechazó "${file.name}": ${error.message}` };
   }

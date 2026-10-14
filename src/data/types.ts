@@ -32,6 +32,13 @@ export type Product = {
   images: string[];
   createdAt: string;
   updatedAt: string;
+  /** Producto padre al que pertenece como variante (null = pendiente de asignar). */
+  parentId?: string;
+  /** Color de la variante ("Amarillo") y su hex aproximado para la muestra. */
+  color?: string;
+  colorHex?: string;
+  /** Tamaño de la variante, ya normalizado: "1/4 lt", "20 kg", "240 cm3". */
+  sizeLabel?: string;
 };
 
 export type Category = {
@@ -139,4 +146,59 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   sort?: "nombre" | "precio-asc" | "precio-desc" | "recientes";
+  /** Paginación: cuántos traer y desde cuál. Sin `limit` trae todos. */
+  limit?: number;
+  offset?: number;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Producto padre + variantes                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** Carpeta técnica: se carga una vez por padre y vale para todas sus variantes. */
+export type TechnicalSheet = {
+  datos?: { label: string; value: string }[];
+  uso?: string[];
+  documentos?: { label: string; url: string }[];
+  /** ids de productos (variantes) que se usan junto con este. */
+  complementarios?: string[];
+};
+
+export type ProductUsage = "interior" | "exterior" | "ambos";
+
+export type ProductParent = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  brand?: string;
+  categoryId: string;
+  usage?: ProductUsage;
+  finish?: string;
+  images: string[];
+  technical: TechnicalSheet;
+  active: boolean;
+  /** Variantes ACTIVAS, ordenadas por color y tamaño. */
+  variants: Product[];
+};
+
+export type ParentFilters = {
+  categoryId?: string;
+  search?: string;
+  brand?: string;
+  size?: string;
+  color?: string;
+  usage?: ProductUsage;
+  finish?: string;
+  sort?: "nombre" | "precio-asc" | "precio-desc";
+  limit?: number;
+  offset?: number;
+};
+
+export type ParentFacets = {
+  brands: string[];
+  sizes: string[];
+  colors: { name: string; hex?: string }[];
+  usages: ProductUsage[];
+  finishes: string[];
 };

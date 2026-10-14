@@ -46,6 +46,27 @@ export const siteConfig = {
   themeCookie: "wiedmer_theme",
 
   /**
+   * Datos institucionales que el rediseño del inicio puede mostrar. Todos
+   * arrancan en `null` y la interfaz los OMITE mientras no estén completos:
+   * son datos reales de la empresa (año de fundación, CUIT, vendedor) y no
+   * corresponde inventarlos. Completalos cuando los tengas.
+   */
+  company: {
+    /** Año de fundación. Con él aparecen "años de trayectoria" en las cifras. */
+    foundedYear: null as number | null,
+    /** Razón social y CUIT, para el pie de página. */
+    legalName: null as string | null,
+    taxId: null as string | null,
+    /** URLs completas de las redes (https://instagram.com/…). */
+    instagram: null as string | null,
+    facebook: null as string | null,
+    /** Vendedor del llamado final. `photo` es una ruta de `public/`. */
+    seller: null as { name: string; photo: string | null } | null,
+    /** Foto real del depósito o de los camiones, ruta de `public/`. */
+    warehousePhoto: null as string | null,
+  },
+
+  /**
    * Límites de la subida de imágenes desde el panel.
    *
    * Los archivos van a Supabase Storage, al bucket `productos`
@@ -58,6 +79,8 @@ export const siteConfig = {
   uploads: {
     maxSizeBytes: 5 * 1024 * 1024, // 5 MB
     allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"],
+    /** PDF de la carpeta técnica. Repetido en la migración 20261014130000. */
+    documentMaxSizeBytes: 15 * 1024 * 1024, // 15 MB
   },
 
   /** Límites de la carga de lista de precios. */

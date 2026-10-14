@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { siteConfig } from "@/config/site";
-import { subirImagen } from "@/lib/storage";
+import { subirDocumento, subirImagen } from "@/lib/storage";
 
 /**
  * POST /api/admin/upload — sube imágenes de producto.
@@ -32,6 +32,9 @@ export async function POST(request: Request) {
     );
   }
 
+  // `tipo=documento` sube PDF (carpeta técnica); sin él, imágenes de producto.
+  const esDocumento = formData.get("tipo") === "documento";
+
   const files = formData
     .getAll("files")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
@@ -42,6 +45,27 @@ export async function POST(request: Request) {
 
   // Validamos TODO antes de subir nada, para no dejar la mitad de las fotos
   // arriba y la otra mitad no.
+  if (esDocumento) {
+    for (const file of files) {
+      if (file.type !== "application/pdf") {
+        return NextResponse.json({ error: `"${file.name}" no es un PDF.` }, { status: 400 });
+      }
+      if (file.size > siteConfig.uploads.documentMaxSizeBytes) {
+        const maxMb = Math.round(siteConfig.uploads.documentMaxSizeBytes / 1024 / 1024);
+        return NextResponse.json({ error: `"${file.name}" pesa más de ${maxMb} MB.` }, { status: 400 });
+      }
+    }
+    const paths: string[] = [];
+    for (const file of files) {
+      const resultado = await subirDocumento(file);
+      if ("error" in resultado) {
+        return NextResponse.json({ error: resultado.error, paths }, { status: 502 });
+      }
+      paths.push(resultado.url);
+    }
+    return NextResponse.json({ paths });
+  }
+
   for (const file of files) {
     if (!(siteConfig.uploads.allowedTypes as readonly string[]).includes(file.type)) {
       return NextResponse.json(

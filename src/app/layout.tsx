@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Libre_Franklin } from "next/font/google";
+import { Archivo, JetBrains_Mono, Libre_Franklin } from "next/font/google";
 
 import { getLocale, getTheme } from "@/lib/request-context";
 
@@ -15,6 +15,19 @@ import "./globals.css";
  */
 const libreFranklin = Libre_Franklin({
   variable: "--font-libre-franklin",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+// Títulos (display) y códigos de producto (monoespaciada), ver globals.css.
+const archivo = Archivo({
+  variable: "--font-archivo",
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+});
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
 });
@@ -45,9 +58,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale}
-      // `data-theme` solo aparece si hubo una elección explícita.
-      data-theme={theme ?? undefined}
-      className={`${libreFranklin.variable} h-full antialiased`}
+      // Modo día por defecto: sin elección guardada, el sitio es claro aunque el
+      // sistema esté en oscuro. El modo noche sigue disponible con el botón luna.
+      data-theme={theme ?? "light"}
+      className={`${libreFranklin.variable} ${archivo.variable} ${jetbrainsMono.variable} h-full antialiased`}
       /*
        * `scroll-behavior: smooth` está en globals.css para que los links
        * internos (#categorias) bajen suave. Este atributo le confirma a Next

@@ -1,6 +1,11 @@
 import "server-only";
 
 import type {
+  ParentFacets,
+  ParentFilters,
+  ProductParent,
+  ProductUsage,
+  TechnicalSheet,
   AppUser,
   Category,
   CategoryInput,
@@ -67,6 +72,24 @@ type ProductRow = {
   images: string[];
   created_at: Date;
   updated_at: Date;
+  parent_id: string | null;
+  color: string | null;
+  color_hex: string | null;
+  size_label: string | null;
+};
+
+type ParentRow = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  brand: string | null;
+  category_id: string | null;
+  usage: ProductUsage | null;
+  finish: string | null;
+  images: string[];
+  technical: TechnicalSheet;
+  active: boolean;
 };
 
 type CategoryRow = {
@@ -106,6 +129,27 @@ function aProducto(r: ProductRow): Product {
     images: r.images,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
+    parentId: r.parent_id ?? undefined,
+    color: r.color ?? undefined,
+    colorHex: r.color_hex ?? undefined,
+    sizeLabel: r.size_label ?? undefined,
+  };
+}
+
+function aPadre(r: ParentRow, variants: Product[]): ProductParent {
+  return {
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    description: r.description,
+    brand: r.brand ?? undefined,
+    categoryId: r.category_id ?? "",
+    usage: r.usage ?? undefined,
+    finish: r.finish ?? undefined,
+    images: r.images,
+    technical: r.technical ?? {},
+    active: r.active,
+    variants,
   };
 }
 
@@ -154,7 +198,7 @@ function paraLike(texto: string): string {
  * de siempre) elige entre esos.
  */
 async function slugLibre(
-  tabla: "products" | "categories",
+  tabla: "products" | "categories" | "product_parents",
   texto: string,
   excluirId?: string,
 ): Promise<string> {
@@ -183,7 +227,8 @@ type Fragmento = ReturnType<typeof sql<never[]>>;
  * valores nunca se concatenan al texto de la consulta: viajan como parámetros
  * (`$1`, `$2`…), que es lo que hace imposible una inyección de SQL.
  */
-export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
+/** Arma el `where` a partir de los filtros. Lo comparten el listado y el conteo. */
+function dondeDe(filters: ProductFilters): Fragmento {
   const condiciones: Fragmento[] = [];
 
   if (filters.onlyActive) {
@@ -221,9 +266,21 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     condiciones.push(sql`p.price <= ${filters.maxPrice}`);
   }
 
-  const donde = condiciones.length
+  return condiciones.length
     ? condiciones.reduce((acumulado, actual) => sql`${acumulado} and ${actual}`)
     : sql`true`;
+}
+
+/** Cuántos productos cumplen los filtros (sin paginar). Sirve para armar la paginación. */
+export async function countProducts(filters: ProductFilters = {}): Promise<number> {
+  const [fila] = await sql<{ total: number }[]>`
+    select count(*)::int as total from public.products p
+    where ${dondeDe(filters)}`;
+  return fila.total;
+}
+
+export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
+  const donde = dondeDe(filters);
 
   // Ordenar por nombre "a la española": ignorando mayúsculas y tildes, para que
   // "Ácido" no quede después de "Zinc". El id al final solo desempata, así dos
@@ -240,8 +297,196 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   const filas = await sql<ProductRow[]>`
     select p.* from public.products p
     where ${donde}
-    order by ${orden}`;
+    order by ${orden}
+    ${filters.limit !== undefined ? sql`limit ${filters.limit} offset ${filters.offset ?? 0}` : sql``}`;
 
+  return filas.map(aProducto);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Productos padre + variantes                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Orden natural de tamaños: "1/4 lt" < "1/2 lt" < "1 lt" < "4 lt" < "20 lt".
+ * Se compara por el número (las fracciones se evalúan) y después por el texto.
+ */
+function valorTamano(t?: string): number {
+  if (!t) return 0;
+  const m = t.match(/^(\d+(?:\.\d+)?)(?:\/(\d+))?/);
+  if (!m) return 0;
+  return m[2] ? Number(m[1]) / Number(m[2]) : Number(m[1]);
+}
+
+export function ordenarVariantes(variantes: Product[]): Product[] {
+  return [...variantes].sort(
+    (a, b) =>
+      (a.color ?? "").localeCompare(b.color ?? "", "es") ||
+      valorTamano(a.sizeLabel) - valorTamano(b.sizeLabel) ||
+      a.sku.localeCompare(b.sku, "es", { numeric: true }),
+  );
+}
+
+/** Arma el `where` de los padres: solo los que tienen alguna variante activa. */
+function dondePadres(f: ParentFilters): Fragmento {
+  const cond: Fragmento[] = [
+    sql`g.active`,
+    sql`exists (select 1 from public.products v where v.parent_id = g.id and v.active)`,
+  ];
+  if (f.categoryId) cond.push(sql`g.category_id = ${f.categoryId}`);
+  if (f.brand) cond.push(sql`g.brand = ${f.brand}`);
+  if (f.usage) cond.push(sql`(g.usage = ${f.usage} or g.usage = 'ambos')`);
+  if (f.finish) cond.push(sql`g.finish = ${f.finish}`);
+  if (f.size) {
+    cond.push(
+      sql`exists (select 1 from public.products v where v.parent_id = g.id and v.active and v.size_label = ${f.size})`,
+    );
+  }
+  if (f.color) {
+    cond.push(
+      sql`exists (select 1 from public.products v where v.parent_id = g.id and v.active and v.color = ${f.color})`,
+    );
+  }
+  if (f.search) {
+    // Busca en el padre (nombre/marca) y en cualquier variante (incluye el
+    // código, porque search_text lo trae): "36230" encuentra el esmalte.
+    const termino = `%${paraLike(normalizeText(f.search))}%`;
+    cond.push(
+      sql`(public.immutable_unaccent(lower(g.name)) like ${termino}
+        or exists (select 1 from public.products v where v.parent_id = g.id and v.active and v.search_text like ${termino}))`,
+    );
+  }
+  return cond.reduce((a, c) => sql`${a} and ${c}`);
+}
+
+async function variantesDe(ids: string[]): Promise<Map<string, Product[]>> {
+  const mapa = new Map<string, Product[]>();
+  if (ids.length === 0) return mapa;
+  const filas = await sql<ProductRow[]>`
+    select * from public.products where parent_id = any(${ids}) and active`;
+  for (const fila of filas) {
+    const lista = mapa.get(fila.parent_id!) ?? [];
+    lista.push(aProducto(fila));
+    mapa.set(fila.parent_id!, lista);
+  }
+  for (const [id, lista] of mapa) mapa.set(id, ordenarVariantes(lista));
+  return mapa;
+}
+
+/** Una página de productos padre (con sus variantes) y el total sin paginar. */
+export async function getParents(
+  filters: ParentFilters = {},
+): Promise<{ items: ProductParent[]; total: number }> {
+  const donde = dondePadres(filters);
+  const orden =
+    filters.sort === "precio-asc"
+      ? sql`(select min(v.price) from public.products v where v.parent_id = g.id and v.active) asc, g.id`
+      : filters.sort === "precio-desc"
+        ? sql`(select min(v.price) from public.products v where v.parent_id = g.id and v.active) desc, g.id`
+        : sql`public.immutable_unaccent(lower(g.name)) asc, g.id`;
+
+  const [conteo, filas] = await Promise.all([
+    sql<{ total: number }[]>`
+      select count(*)::int as total from public.product_parents g where ${donde}`,
+    sql<ParentRow[]>`
+      select g.* from public.product_parents g
+      where ${donde}
+      order by ${orden}
+      ${filters.limit !== undefined ? sql`limit ${filters.limit} offset ${filters.offset ?? 0}` : sql``}`,
+  ]);
+
+  const variantes = await variantesDe(filas.map((f) => f.id));
+  return {
+    items: filas.map((f) => aPadre(f, variantes.get(f.id) ?? [])),
+    total: conteo[0].total,
+  };
+}
+
+/** Por categoría: cuántos productos (padres) tiene y sus marcas más frecuentes. */
+export async function getCategoryStats(): Promise<
+  Map<string, { count: number; brands: string[] }>
+> {
+  const filas = await sql<{ category_id: string; brand: string | null; n: number }[]>`
+    select g.category_id, g.brand, count(*)::int as n
+    from public.product_parents g
+    where g.active and g.category_id is not null
+      and exists (select 1 from public.products v where v.parent_id = g.id and v.active)
+    group by g.category_id, g.brand`;
+  const mapa = new Map<string, { count: number; brands: { name: string; n: number }[] }>();
+  for (const f of filas) {
+    const e = mapa.get(f.category_id) ?? { count: 0, brands: [] };
+    e.count += f.n;
+    if (f.brand) e.brands.push({ name: f.brand, n: f.n });
+    mapa.set(f.category_id, e);
+  }
+  return new Map(
+    [...mapa].map(([id, e]) => [
+      id,
+      { count: e.count, brands: e.brands.sort((a, b) => b.n - a.n).slice(0, 6).map((b) => b.name) },
+    ]),
+  );
+}
+
+export async function getParentBySlug(slug: string): Promise<ProductParent | null> {
+  const filas = await sql<ParentRow[]>`
+    select * from public.product_parents where slug = ${slug} and active limit 1`;
+  if (!filas[0]) return null;
+  const variantes = await variantesDe([filas[0].id]);
+  const lista = variantes.get(filas[0].id) ?? [];
+  return lista.length ? aPadre(filas[0], lista) : null;
+}
+
+/** El padre al que pertenece un código (para el enlace `?codigo=36230`). */
+export async function getParentBySku(sku: string): Promise<ProductParent | null> {
+  const filas = await sql<{ slug: string }[]>`
+    select g.slug from public.product_parents g
+    join public.products p on p.parent_id = g.id
+    where lower(p.sku) = lower(${sku}) and p.active limit 1`;
+  return filas[0] ? getParentBySlug(filas[0].slug) : null;
+}
+
+/** Opciones para los filtros laterales de una categoría. */
+export async function getParentFacets(categoryId?: string): Promise<ParentFacets> {
+  const donde = categoryId ? sql`g.category_id = ${categoryId}` : sql`true`;
+  const [marcas, tamanos, colores, usos, terminaciones] = await Promise.all([
+    sql<{ v: string }[]>`
+      select distinct g.brand as v from public.product_parents g
+      where ${donde} and g.active and g.brand is not null order by 1`,
+    sql<{ v: string }[]>`
+      select distinct p.size_label as v from public.products p
+      join public.product_parents g on g.id = p.parent_id
+      where ${donde} and p.active and p.size_label is not null`,
+    sql<{ v: string; hex: string | null }[]>`
+      select p.color as v, min(p.color_hex) as hex from public.products p
+      join public.product_parents g on g.id = p.parent_id
+      where ${donde} and p.active and p.color is not null group by p.color order by 1`,
+    sql<{ v: ProductUsage }[]>`
+      select distinct g.usage as v from public.product_parents g
+      where ${donde} and g.active and g.usage is not null`,
+    sql<{ v: string }[]>`
+      select distinct g.finish as v from public.product_parents g
+      where ${donde} and g.active and g.finish is not null order by 1`,
+  ]);
+  return {
+    brands: marcas.map((m) => m.v),
+    sizes: tamanos.map((t) => t.v).sort((a, b) => valorTamano(a) - valorTamano(b)),
+    colors: colores.map((c) => ({ name: c.v, hex: c.hex ?? undefined })),
+    usages: usos.map((u) => u.v),
+    finishes: terminaciones.map((t) => t.v),
+  };
+}
+
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (ids.length === 0) return [];
+  const filas = await sql<ProductRow[]>`
+    select * from public.products where id = any(${ids}) and active`;
+  return filas.map(aProducto);
+}
+
+export async function getProductsBySkus(skus: string[]): Promise<Product[]> {
+  if (skus.length === 0) return [];
+  const filas = await sql<ProductRow[]>`
+    select * from public.products where lower(sku) = any(${skus.map((x) => x.toLowerCase())})`;
   return filas.map(aProducto);
 }
 
@@ -278,6 +523,103 @@ export async function getProductBySku(sku: string): Promise<Product | null> {
  * hay forma de olvidarse.
  */
 export async function upsertProduct(input: ProductInput): Promise<Product> {
+  const guardado = await guardarProducto(input);
+  // Un producto ACTIVO sin padre no aparecería en el catálogo (que lista
+  // padres). Se le crea uno propio, de una sola variante; después se lo puede
+  // mover a otro padre desde "Pendientes".
+  if (guardado.active && !guardado.parentId) {
+    await crearPadreDe(guardado.id);
+    return (await getProductById(guardado.id)) ?? guardado;
+  }
+  return guardado;
+}
+
+/** Crea un padre con el nombre del producto y se lo asigna como única variante. */
+async function crearPadreDe(productId: string): Promise<void> {
+  const p = await getProductById(productId);
+  if (!p) return;
+  const slug = await slugLibre("product_parents", p.name);
+  await sql.begin(async (tx) => {
+    const [padre] = await tx`
+      insert into public.product_parents (name, slug, brand, category_id, description, images)
+      values (${p.name}, ${slug}, ${oNulo(p.brand)}, ${oNulo(p.categoryId)}, ${p.description},
+              ${p.images}::text[])
+      returning id`;
+    await tx`update public.products set parent_id = ${padre.id} where id = ${productId}`;
+  });
+}
+
+/** Códigos sin padre (por ejemplo, altas nuevas de una lista de precios). */
+export async function getPendingProducts(): Promise<Product[]> {
+  const filas = await sql<ProductRow[]>`
+    select * from public.products where parent_id is null
+    order by created_at desc, sku`;
+  return filas.map(aProducto);
+}
+
+export async function getParentsForAdmin(): Promise<
+  { id: string; name: string; categoryId: string; variants: number }[]
+> {
+  const filas = await sql<{ id: string; name: string; category_id: string | null; n: number }[]>`
+    select g.id, g.name, g.category_id, count(p.id)::int as n
+    from public.product_parents g left join public.products p on p.parent_id = g.id
+    group by g.id order by public.immutable_unaccent(lower(g.name))`;
+  return filas.map((f) => ({
+    id: f.id,
+    name: f.name,
+    categoryId: f.category_id ?? "",
+    variants: f.n,
+  }));
+}
+
+/**
+ * Asigna un código pendiente a un padre existente (con su color y tamaño), o
+ * le crea un padre propio si `parentId` es null. Lo deja activo.
+ */
+export async function assignProductToParent(
+  productId: string,
+  datos: { parentId: string | null; color?: string; colorHex?: string; sizeLabel?: string },
+): Promise<void> {
+  if (datos.parentId === null) {
+    await crearPadreDe(productId);
+  } else {
+    await sql`
+      update public.products set
+        parent_id = ${datos.parentId},
+        color = ${oNulo(datos.color)},
+        color_hex = ${oNulo(datos.colorHex)},
+        size_label = ${oNulo(datos.sizeLabel)}
+      where id = ${productId}`;
+  }
+  await sql`update public.products set active = true where id = ${productId}`;
+}
+
+export type ParentEdit = {
+  id: string;
+  description: string;
+  usage: ProductUsage | null;
+  finish: string | null;
+  technical: TechnicalSheet;
+};
+
+export async function getParentById(id: string): Promise<ProductParent | null> {
+  const filas = await sql<ParentRow[]>`select * from public.product_parents where id = ${id} limit 1`;
+  if (!filas[0]) return null;
+  const variantes = await sql<ProductRow[]>`select * from public.products where parent_id = ${id}`;
+  return aPadre(filas[0], ordenarVariantes(variantes.map(aProducto)));
+}
+
+export async function updateParent(edit: ParentEdit): Promise<void> {
+  await sql`
+    update public.product_parents set
+      description = ${edit.description},
+      usage = ${edit.usage},
+      finish = ${edit.finish},
+      technical = ${sql.json(edit.technical as never)}
+    where id = ${edit.id}`;
+}
+
+async function guardarProducto(input: ProductInput): Promise<Product> {
   if (input.id) {
     const previo = await getProductById(input.id);
     if (!previo) throw new Error(`No existe el producto ${input.id}`);
