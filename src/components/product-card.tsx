@@ -81,7 +81,7 @@ export function ProductCard({
         </h3>
 
         <p className="text-[11px] text-ink-soft">
-          {t.common.code} {product.sku}
+          {t.common.code} <span className="font-mono">{product.sku}</span>
           {product.unit ? ` · ${product.unit}` : ""}
         </p>
 
@@ -140,7 +140,7 @@ export function ProductGrid({
         // Las fichas entran en cascada al llegar a la pantalla. El retraso se
         // calcula por posición DENTRO DE LA FILA (index % 4) y no por índice
         // absoluto: si no, la ficha número 40 esperaría 3 segundos.
-        <Reveal key={product.id} delay={(index % 4) * 70} className="h-full">
+        <Reveal key={product.id} delay={(index % 4) * 60} className="h-full">
           <ProductCard product={product} ctx={ctx} />
         </Reveal>
       ))}

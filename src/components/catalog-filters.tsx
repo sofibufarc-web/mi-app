@@ -17,12 +17,15 @@ export function CatalogFilters({
   defaults,
   t,
   showPriceFilters = true,
+  showPriceRange = true,
 }: {
   /** A dónde envía el form. Ej: "/categoria/pinturas" */
   action: string;
   defaults: { q?: string; min?: string; max?: string; sort?: string };
   t: Dictionary;
   showPriceFilters?: boolean;
+  /** Los campos desde/hasta. Se apagan donde el listado no filtra por rango. */
+  showPriceRange?: boolean;
 }) {
   const inputClass =
     "h-10 rounded-md border border-line bg-card px-3 text-sm text-ink outline-none transition focus:border-brand";
@@ -43,7 +46,7 @@ export function CatalogFilters({
         />
       </label>
 
-      {showPriceFilters && (
+      {showPriceFilters && showPriceRange && (
         <>
           <label className="flex basis-28 flex-col gap-1">
             <span className="text-xs font-semibold text-ink-soft">

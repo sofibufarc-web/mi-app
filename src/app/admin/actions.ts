@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import type { ProductInput, Role } from "@/data/types";
+import type { ProductInput, ProductUsage, Role, TechnicalSheet } from "@/data/types";
 import { parsePriceValue } from "@/lib/price-parse";
 import {
   confirmUserEmail,
@@ -12,6 +12,9 @@ import {
   deleteCategory,
   deleteProduct,
   deleteUser,
+  assignProductToParent,
+  getProductsBySkus,
+  updateParent,
   getUserByEmail,
   getUserById,
   setAuthPasswordByEmail,
@@ -515,4 +518,100 @@ export async function changeClientPasswordAction(
     message:
       "Contraseña cambiada. Los clientes que estaban conectados tendrán que entrar de nuevo con la nueva.",
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fichas técnicas (producto padre)                                            */
+/* -------------------------------------------------------------------------- */
+
+/** Líneas "Etiqueta: valor" → [{ label, value }]. Las que no tienen ":" se ignoran. */
+function leerDatos(texto: string): { label: string; value: string }[] {
+  return texto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .flatMap((l) => {
+      const i = l.indexOf(":");
+      if (i <= 0) return [];
+      return [{ label: l.slice(0, i).trim(), value: l.slice(i + 1).trim() }];
+    })
+    .filter((d) => d.value);
+}
+
+const lineas = (texto: string) =>
+  texto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+export async function saveParentSheetAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const permiso = await exigirAdmin();
+  if ("error" in permiso) return { error: permiso.error };
+
+  const id = text(formData, "id");
+  if (!id) return { error: "Falta el id del producto." };
+
+  const uso = text(formData, "usage");
+  const usage: ProductUsage | null =
+    uso === "interior" || uso === "exterior" || uso === "ambos" ? uso : null;
+
+  // Documentos: los campos vienen de a pares (label + url) con el mismo índice.
+  const documentos: { label: string; url: string }[] = [];
+  for (let i = 0; i < 20; i++) {
+    const label = text(formData, `doc_label_${i}`);
+    const url = text(formData, `doc_url_${i}`);
+    if (url) {
+      // Solo enlaces http(s): nada de javascript: ni data: dentro de un href.
+      if (!/^https?:\/\//i.test(url)) return { error: `El enlace del documento ${i + 1} no es válido.` };
+      documentos.push({ label: label || "Documento", url });
+    }
+  }
+
+  // Complementarios: códigos separados por coma, espacio o salto de línea.
+  const codigos = text(formData, "complementarios").split(/[\s,;]+/).filter(Boolean);
+  const encontrados = await getProductsBySkus(codigos);
+  const faltan = codigos.filter((c) => !encontrados.some((p) => p.sku.toLowerCase() === c.toLowerCase()));
+  if (faltan.length > 0) return { error: `No existen estos códigos: ${faltan.join(", ")}.` };
+
+  const technical: TechnicalSheet = {
+    datos: leerDatos(text(formData, "datos")),
+    uso: lineas(text(formData, "uso_pasos")),
+    documentos,
+    complementarios: encontrados.map((p) => p.id),
+  };
+
+  await updateParent({
+    id,
+    description: text(formData, "description"),
+    usage,
+    finish: text(formData, "finish") || null,
+    technical,
+  });
+
+  revalidatePath("/", "layout");
+  return { error: null, ok: true, message: "Ficha guardada." };
+}
+
+export async function assignPendingAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const permiso = await exigirAdmin();
+  if ("error" in permiso) return { error: permiso.error };
+
+  const productId = text(formData, "productId");
+  const parentId = text(formData, "parentId"); // "" = crear un padre propio
+  if (!productId) return { error: "Falta el producto." };
+
+  await assignProductToParent(productId, {
+    parentId: parentId || null,
+    color: text(formData, "color") || undefined,
+    sizeLabel: text(formData, "sizeLabel") || undefined,
+  });
+
+  revalidatePath("/", "layout");
+  return { error: null, ok: true, message: "Asignado y publicado." };
 }

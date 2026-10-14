@@ -82,12 +82,12 @@ export function AddToCartButton({
       <button
         type="button"
         onClick={handleAdd}
-        className={`flex-1 rounded-md px-4 text-sm font-semibold transition active:scale-[0.98] ${
+        className={`flex-1 rounded-md px-4 text-sm font-semibold ${
           withQuantity ? "h-11" : "h-9"
         } ${
           added
-            ? "bg-emerald-600 text-white"
-            : "bg-brand text-on-brand hover:bg-brand-dark"
+            ? "bg-emerald-600 text-white transition active:scale-[0.97]"
+            : "btn-primary"
         }`}
       >
         {added ? t.added : t.addToCart}

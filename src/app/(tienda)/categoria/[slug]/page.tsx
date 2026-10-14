@@ -4,15 +4,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
-  CatalogFilters,
   firstParam,
   numberParam,
-  withoutPriceFilters,
 } from "@/components/catalog-filters";
 import { PriceGateBanner } from "@/components/price-gate";
-import { ProductGrid } from "@/components/product-card";
-import type { ProductFilters } from "@/data/types";
-import { getCategoryBySlug, getProducts, getStoreConfig } from "@/lib/data-source";
+import { ParentGrid } from "@/components/parent-card";
+import { ParentFilters } from "@/components/parent-filters";
+import type { ParentFilters as ParentFiltersType, ProductUsage } from "@/data/types";
+import { Pagination } from "@/components/pagination";
+import { getCategoryBySlug, getParentFacets, getParents, getStoreConfig } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 
 /**
@@ -50,19 +50,37 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
   const [config, viewer] = await Promise.all([getStoreConfig(), getViewer()]);
   const { t, showPrices } = viewer;
 
-  const filters: ProductFilters = withoutPriceFilters(
-    {
-      categoryId: category.id,
-      onlyActive: true,
-      search: firstParam(query.q),
-      minPrice: numberParam(query.min),
-      maxPrice: numberParam(query.max),
-      sort: (firstParam(query.sort) as ProductFilters["sort"]) ?? "nombre",
-    },
-    showPrices,
-  );
+  // El catálogo lista PRODUCTOS (padres); sus colores y tamaños son variantes.
+  // Con sesión se puede ordenar por precio; sin sesión se ignora en el servidor
+  // (ver `withoutPriceFilters`): ordenar por precio dejaría deducir cuál es más caro.
+  const sortPedido = firstParam(query.sort);
+  const sort: ParentFiltersType["sort"] =
+    showPrices && (sortPedido === "precio-asc" || sortPedido === "precio-desc")
+      ? sortPedido
+      : "nombre";
+  const usoPedido = firstParam(query.usage);
+  const filters: ParentFiltersType = {
+    categoryId: category.id,
+    search: firstParam(query.q),
+    brand: firstParam(query.brand),
+    size: firstParam(query.size),
+    color: firstParam(query.color),
+    usage: usoPedido === "interior" || usoPedido === "exterior" || usoPedido === "ambos"
+      ? (usoPedido as ProductUsage)
+      : undefined,
+    finish: firstParam(query.finish),
+    sort,
+  };
 
-  const products = await getProducts(filters);
+  // Paginado: 24 productos por página (antes se traían los 636 de Pinturas).
+  const POR_PAGINA = 24;
+  const pagina = Math.max(1, numberParam(query.pagina) ?? 1);
+  const [facets, resultado] = await Promise.all([
+    getParentFacets(category.id),
+    getParents({ ...filters, limit: POR_PAGINA, offset: (pagina - 1) * POR_PAGINA }),
+  ]);
+  const { items: products, total } = resultado;
+  const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
   return (
     <>
@@ -131,30 +149,50 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
           </div>
         )}
 
-        <CatalogFilters
-          action={`/categoria/${category.slug}`}
-          t={t}
-          showPriceFilters={showPrices}
-          defaults={{
-            q: firstParam(query.q),
-            min: firstParam(query.min),
-            max: firstParam(query.max),
-            sort: firstParam(query.sort),
-          }}
-        />
+        <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <aside>
+            <ParentFilters
+              action={`/categoria/${category.slug}`}
+              facets={facets}
+              t={t}
+              showPriceFilters={showPrices}
+              values={{
+                q: firstParam(query.q),
+                brand: firstParam(query.brand),
+                size: firstParam(query.size),
+                color: firstParam(query.color),
+                usage: firstParam(query.usage),
+                finish: firstParam(query.finish),
+                sort: firstParam(query.sort),
+              }}
+            />
+          </aside>
 
-        <p className="mt-6 text-sm text-ink-soft">
-          {products.length}{" "}
-          {products.length === 1 ? t.common.product : t.common.products}
-        </p>
-
-        {/* La grilla ya anima cada ficha por separado (ver ProductGrid), así
-            que acá no hace falta envolver nada más. */}
-        <div className="mt-3">
-          <ProductGrid
-            products={products}
-            ctx={{ showPrices, t, whatsappNumber: config.whatsappNumber }}
-          />
+          <div>
+            <p className="text-sm text-ink-soft">
+              {total} {total === 1 ? t.common.product : t.common.products}
+            </p>
+            <div className="mt-3">
+              <ParentGrid
+                parents={products}
+                ctx={{ showPrices, t, whatsappNumber: config.whatsappNumber }}
+              />
+            </div>
+            <Pagination
+              basePath={`/categoria/${category.slug}`}
+              page={Math.min(pagina, totalPaginas)}
+              totalPages={totalPaginas}
+              params={{
+                q: firstParam(query.q),
+                brand: firstParam(query.brand),
+                size: firstParam(query.size),
+                color: firstParam(query.color),
+                usage: firstParam(query.usage),
+                finish: firstParam(query.finish),
+                sort: firstParam(query.sort),
+              }}
+            />
+          </div>
         </div>
       </div>
     </>

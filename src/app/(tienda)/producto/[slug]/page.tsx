@@ -1,60 +1,103 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
-import { AddToCartButton } from "@/components/add-to-cart-button";
-import {
-  PriceGateBanner,
-  ProductPrice,
-  WhatsappInquiryButton,
-} from "@/components/price-gate";
-import { ProductGallery } from "@/components/product-gallery";
-import { ProductGrid } from "@/components/product-card";
+import { ParentGrid } from "@/components/parent-card";
+import { PriceGateBanner } from "@/components/price-gate";
 import { Reveal } from "@/components/reveal";
+import { TechnicalTabs, type RelatedLite } from "@/components/technical-tabs";
+import { VariantPicker, type VariantLite } from "@/components/variant-picker";
 import {
   getCategoryById,
+  getParentBySku,
+  getParentBySlug,
+  getParents,
   getProductBySlug,
-  getProducts,
+  getProductsByIds,
   getStoreConfig,
 } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 
-type Props = { params: Promise<{ slug: string }> };
+/**
+ * Ficha de un PRODUCTO (padre). Sus colores y tamaños son variantes que se
+ * eligen en la misma página; cada una tiene su URL: /producto/<slug>?codigo=36230
+ */
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
-  if (!product) return { title: "Producto no encontrado" };
+  const parent = await getParentBySlug(slug);
+  if (!parent) return { title: "Producto no encontrado" };
   return {
-    title: product.name,
-    // La descripción tiene párrafos; para el <meta> alcanza el primero.
-    description: product.description.split("\n\n")[0]?.slice(0, 160),
+    title: parent.name,
+    description: parent.description.split("\n\n")[0]?.slice(0, 160) || undefined,
   };
 }
 
-export default async function ProductoPage({ params }: Props) {
+export default async function ProductoPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const query = await searchParams;
+  const codigo = Array.isArray(query.codigo) ? query.codigo[0] : query.codigo;
 
-  // Los productos inactivos no se muestran en el catálogo público.
-  if (!product || !product.active) notFound();
+  const parent = await getParentBySlug(slug);
+  if (!parent) {
+    // Enlaces viejos (/producto/<slug de un artículo>): se llevan al padre,
+    // con el código ya elegido.
+    const viejo = await getProductBySlug(slug);
+    if (viejo?.active) {
+      const padre = await getParentBySku(viejo.sku);
+      if (padre) redirect(`/producto/${padre.slug}?codigo=${encodeURIComponent(viejo.sku)}`);
+    }
+    notFound();
+  }
 
   const [category, config, viewer] = await Promise.all([
-    product.categoryId ? getCategoryById(product.categoryId) : null,
+    parent.categoryId ? getCategoryById(parent.categoryId) : null,
     getStoreConfig(),
     getViewer(),
   ]);
   const { t, showPrices } = viewer;
 
-  // Relacionados: misma categoría, sin contar el producto actual.
-  const related = (
-    await getProducts({ categoryId: product.categoryId, onlyActive: true })
-  )
-    .filter((p) => p.id !== product.id)
-    .slice(0, 4);
+  // Al navegador solo viaja lo que puede ver: sin sesión, ningún precio.
+  const variants: VariantLite[] = parent.variants.map((v) => ({
+    id: v.id,
+    sku: v.sku,
+    color: v.color,
+    colorHex: v.colorHex,
+    sizeLabel: v.sizeLabel,
+    image: v.images[0] && v.images[0] !== parent.images[0] ? v.images[0] : undefined,
+    stock: v.stock,
+    price: showPrices ? v.price : undefined,
+  }));
+
+  const images = parent.images.length
+    ? parent.images
+    : parent.variants.flatMap((v) => v.images).slice(0, 1);
+
+  // Carpeta técnica y complementarios: solo con sesión.
+  let related: RelatedLite[] = [];
+  if (showPrices && parent.technical.complementarios?.length) {
+    related = (await getProductsByIds(parent.technical.complementarios)).map((p) => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      image: p.images[0],
+    }));
+  }
+
+  const { items: otros } = await getParents({
+    categoryId: parent.categoryId || undefined,
+    limit: 5,
+  });
+  const parecidos = otros.filter((p) => p.id !== parent.id).slice(0, 4);
 
   return (
-    <div className="container-wiedmer py-8">
+    <div className="container-wiedmer pb-28 pt-8 lg:pb-8">
       <nav className="text-xs text-ink-soft">
         <Link href="/" className="transition hover:text-brand">
           {t.common.home}
@@ -62,118 +105,45 @@ export default async function ProductoPage({ params }: Props) {
         {category && (
           <>
             <span className="mx-1.5">/</span>
-            <Link
-              href={`/categoria/${category.slug}`}
-              className="transition hover:text-brand"
-            >
+            <Link href={`/categoria/${category.slug}`} className="transition hover:text-brand">
               {category.name}
             </Link>
           </>
         )}
         <span className="mx-1.5">/</span>
-        <span className="text-ink">{product.name}</span>
+        <span className="text-ink">{parent.name}</span>
       </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="animate-fade-in">
-          <ProductGallery images={product.images} alt={product.name} />
-        </div>
-
-        <div className="animate-fade-up [animation-delay:120ms]">
-          {product.brand && (
-            <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
-              {product.brand}
-            </p>
-          )}
-
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            {product.name}
-          </h1>
-
-          <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-soft">
-            <div className="flex gap-1">
-              <dt className="font-semibold">{t.common.code}</dt>
-              <dd>{product.sku}</dd>
-            </div>
-            {product.unit && (
-              <div className="flex gap-1">
-                <dt className="font-semibold">{t.product.unit}:</dt>
-                <dd>{product.unit}</dd>
-              </div>
-            )}
-            {typeof product.stock === "number" && (
-              <div className="flex gap-1">
-                <dt className="font-semibold">{t.product.stock}:</dt>
-                <dd>
-                  {product.stock > 0
-                    ? `${product.stock} ${t.product.units}`
-                    : t.product.outOfStock}
-                </dd>
-              </div>
-            )}
-          </dl>
-
-          <div className="mt-7">
-            <ProductPrice
-              price={product.price}
-              showPrices={showPrices}
-              t={t}
-              size="detail"
-            />
-            {showPrices && (
-              <p className="mt-1 text-xs text-ink-soft">{t.product.priceNote}</p>
-            )}
-          </div>
-
-          {showPrices ? (
-            <AddToCartButton
-              className="mt-6 max-w-md"
-              withQuantity
-              t={t.product}
-              item={{
-                productId: product.id,
-                sku: product.sku,
-                name: product.name,
-                slug: product.slug,
-                price: product.price,
-                image: product.images[0],
-              }}
-            />
-          ) : (
-            <div className="mt-6 max-w-md space-y-3">
-              <WhatsappInquiryButton
-                className="h-12 w-full"
-                variant="solid"
-                productName={product.name}
-                sku={product.sku}
-                whatsappNumber={config.whatsappNumber}
-                t={t}
-              />
-              <Link
-                href={`/login?next=/producto/${product.slug}`}
-                className="flex h-12 w-full items-center justify-center rounded-md border border-line text-sm font-semibold transition hover:border-brand hover:text-brand"
-              >
-                {t.gate.unlock}
-              </Link>
-            </div>
-          )}
-
-          {product.description && (
-            <div className="mt-8 border-t border-line pt-6">
-              <h2 className="text-sm font-bold uppercase tracking-wide">
-                {t.product.description}
-              </h2>
-              {/* La descripción guarda párrafos separados por línea en blanco.
-                  Los partimos y renderizamos un <p> por cada uno. */}
-              <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
-                {product.description.split("\n\n").map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="mt-6">
+        <VariantPicker
+          parent={{
+            id: parent.id,
+            name: parent.name,
+            slug: parent.slug,
+            brand: parent.brand,
+            usage: parent.usage,
+            images,
+          }}
+          variants={variants}
+          initialSku={codigo ?? variants[0].sku}
+          showPrices={showPrices}
+          whatsappNumber={config.whatsappNumber}
+          t={t}
+        />
       </div>
+
+      {parent.description && (
+        <div className="mt-10 border-t border-line pt-6">
+          <h2 className="text-sm font-bold uppercase tracking-wide">{t.product.description}</h2>
+          <div className="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-ink-soft">
+            {parent.description.split("\n\n").map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showPrices && <TechnicalTabs technical={parent.technical} related={related} t={t.variants} />}
 
       {!showPrices && (
         <Reveal className="mt-12 block">
@@ -181,14 +151,14 @@ export default async function ProductoPage({ params }: Props) {
         </Reveal>
       )}
 
-      {related.length > 0 && (
+      {parecidos.length > 0 && (
         <section className="mt-14 border-t border-line pt-10">
           <h2 className="text-xl font-bold tracking-tight">
             {t.product.related} {category?.name ?? t.product.relatedFallback}
           </h2>
           <div className="mt-5">
-            <ProductGrid
-              products={related}
+            <ParentGrid
+              parents={parecidos}
               ctx={{ showPrices, t, whatsappNumber: config.whatsappNumber }}
             />
           </div>

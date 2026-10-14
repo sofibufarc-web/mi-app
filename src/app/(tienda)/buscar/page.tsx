@@ -1,15 +1,9 @@
 import Link from "next/link";
 
-import {
-  CatalogFilters,
-  firstParam,
-  numberParam,
-  withoutPriceFilters,
-} from "@/components/catalog-filters";
+import { CatalogFilters, firstParam } from "@/components/catalog-filters";
 import { PriceGateBanner } from "@/components/price-gate";
-import { ProductGrid } from "@/components/product-card";
-import type { ProductFilters } from "@/data/types";
-import { getProducts, getStoreConfig } from "@/lib/data-source";
+import { ParentGrid } from "@/components/parent-card";
+import { getParents, getStoreConfig } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 
 export const metadata = { title: "Búsqueda" };
@@ -26,18 +20,16 @@ export default async function BuscarPage({ searchParams }: Props) {
   const [config, viewer] = await Promise.all([getStoreConfig(), getViewer()]);
   const { t, showPrices } = viewer;
 
-  const filters: ProductFilters = withoutPriceFilters(
-    {
-      onlyActive: true,
-      search: term || undefined,
-      minPrice: numberParam(query.min),
-      maxPrice: numberParam(query.max),
-      sort: (firstParam(query.sort) as ProductFilters["sort"]) ?? "nombre",
-    },
-    showPrices,
-  );
+  const sortPedido = firstParam(query.sort);
+  const sort =
+    showPrices && (sortPedido === "precio-asc" || sortPedido === "precio-desc")
+      ? sortPedido
+      : "nombre";
 
-  const products = term ? await getProducts(filters) : [];
+  // Busca por nombre, marca o CÓDIGO (el código exacto encuentra su producto).
+  const { items: products, total } = term
+    ? await getParents({ search: term, sort, limit: 48 })
+    : { items: [], total: 0 };
 
   return (
     <div className="container-wiedmer py-8">
@@ -64,10 +56,9 @@ export default async function BuscarPage({ searchParams }: Props) {
           action="/buscar"
           t={t}
           showPriceFilters={showPrices}
+          showPriceRange={false}
           defaults={{
             q: term,
-            min: firstParam(query.min),
-            max: firstParam(query.max),
             sort: firstParam(query.sort),
           }}
         />
@@ -76,12 +67,12 @@ export default async function BuscarPage({ searchParams }: Props) {
       {term ? (
         <>
           <p className="mt-6 text-sm text-ink-soft">
-            {products.length}{" "}
-            {products.length === 1 ? t.common.product : t.common.products}
+            {total}{" "}
+            {total === 1 ? t.common.product : t.common.products}
           </p>
           <div className="mt-3">
-            <ProductGrid
-              products={products}
+            <ParentGrid
+              parents={products}
               ctx={{ showPrices, t, whatsappNumber: config.whatsappNumber }}
             />
           </div>

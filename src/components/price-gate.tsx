@@ -67,8 +67,8 @@ export function ProductPrice({
       <p
         className={
           size === "detail"
-            ? "text-3xl font-bold text-brand"
-            : "text-lg font-bold text-brand"
+            ? "text-3xl font-bold text-accent-text"
+            : "text-lg font-bold text-accent-text"
         }
       >
         {formatPrice(price)}

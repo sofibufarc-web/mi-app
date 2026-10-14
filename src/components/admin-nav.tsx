@@ -10,6 +10,8 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/admin", label: "Inicio", exact: true },
   { href: "/admin/productos", label: "Productos" },
+  { href: "/admin/fichas", label: "Fichas técnicas" },
+  { href: "/admin/pendientes", label: "Pendientes de asignar" },
   { href: "/admin/categorias", label: "Categorías" },
   { href: "/admin/precios", label: "Lista de precios" },
   { href: "/admin/usuarios", label: "Usuarios" },
