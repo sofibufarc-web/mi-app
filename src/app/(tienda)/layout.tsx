@@ -1,8 +1,14 @@
+import { Suspense } from "react";
+
+import { MobileNav } from "@/components/mobile-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { WelcomeToast } from "@/components/welcome-toast";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-import { getStoreConfig } from "@/lib/data-source";
-import { getT } from "@/lib/request-context";
+import { canSeePrices } from "@/lib/auth";
+import { getCategories, getCategoryStats, getStoreConfig } from "@/lib/data-source";
+import { getViewer } from "@/lib/request-context";
+import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 
 /**
  * Layout del catálogo público.
@@ -25,7 +31,13 @@ import { getT } from "@/lib/request-context";
 export const dynamic = "force-dynamic";
 
 export default async function TiendaLayout({ children }: LayoutProps<"/">) {
-  const [t, config] = await Promise.all([getT(), getStoreConfig()]);
+  const [viewer, config, categories, stats] = await Promise.all([
+    getViewer(),
+    getStoreConfig(),
+    getCategories(),
+    getCategoryStats(),
+  ]);
+  const { t, role } = viewer;
 
   return (
     <>
@@ -44,16 +56,49 @@ export default async function TiendaLayout({ children }: LayoutProps<"/">) {
         {t.common.skipToContent}
       </a>
 
+      <Suspense fallback={null}>
+        <WelcomeToast message={t.login.welcome} />
+      </Suspense>
+
       <SiteHeader />
-      <main id="contenido" className="flex-1">
+      <main id="contenido" className="flex-1 pb-14 md:pb-0">
         {children}
       </main>
       <SiteFooter />
 
+      {/* Menú de pantalla completa y barra inferior del celular. Van acá y no
+          en el header porque el header tiene `backdrop-filter`, que rompe el
+          `position: fixed` de sus hijos. */}
+      <MobileNav
+        categories={categories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          image: c.image,
+          count: stats.get(c.id)?.count ?? 0,
+          brands: [],
+        }))}
+        labels={{
+          home: t.nav.home,
+          categories: t.nav.categories,
+          search: t.nav.search,
+          order: t.nav.order,
+          whatsapp: t.nav.whatsapp,
+          close: t.nav.close,
+        }}
+        whatsappUrl={`https://wa.me/${normalizeWhatsappNumber(config.whatsappNumber)}`}
+        canOrder={canSeePrices(role)}
+      />
+
       {/* Botón flotante de WhatsApp: va en el layout y no en cada página, así
           acompaña al visitante por todo el catálogo. Lo ve cualquiera, con o
           sin sesión: es el canal de contacto general. */}
-      <WhatsappFab number={config.whatsappNumber} label={t.common.whatsappFab} />
+      <WhatsappFab
+        number={config.whatsappNumber}
+        label={t.common.whatsappFab}
+        bubble={t.nav.fabBubble}
+        closeLabel={t.nav.fabClose}
+      />
     </>
   );
 }

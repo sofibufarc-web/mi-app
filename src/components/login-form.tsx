@@ -23,12 +23,17 @@ function SubmitButton({ t }: { t: Dictionary }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="h-11 w-full rounded-md bg-brand text-sm font-semibold text-on-brand transition hover:bg-brand-dark disabled:opacity-60"
-    >
-      {pending ? t.login.submitting : t.login.submit}
+    <button type="submit" disabled={pending} className="btn-primary h-12 w-full text-base">
+      {pending ? (
+        <>
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+          {t.login.submitting}
+        </>
+      ) : (
+        <>
+          {t.login.submit} <span className="btn-arrow">→</span>
+        </>
+      )}
     </button>
   );
 }

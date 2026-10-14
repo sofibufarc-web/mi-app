@@ -76,6 +76,10 @@ export function StoreMap({ storeName, address, phone, hours, t }: Props) {
         scrollWheelZoom: false,
       });
 
+      // Mosaicos de OpenStreetMap (sin clave de API). Los de CARTO se probaron
+      // y piden clave: dejan el mapa lleno de carteles «API KEY REQUIRED». El
+      // estilo claro se logra con un filtro CSS (`.leaflet-tile-pane` en
+      // globals.css), no con otro proveedor.
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         // Atribución obligatoria por la licencia de OpenStreetMap.
@@ -88,18 +92,25 @@ export function StoreMap({ storeName, address, phone, hours, t }: Props) {
       // problema y de paso el pin usa el color del sitio.
       const icono = L.divIcon({
         className: "",
-        html: `<span class="store-map-pin"></span>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-        popupAnchor: [0, -26],
+        // El marcador lleva la W de la marca. Arranca «arriba» y fuera de
+        // vista; cuando el mapa entra en pantalla se le agrega `.cae` y cae
+        // con un rebote (ver globals.css).
+        html: `<span class="store-map-logo"><span>W</span></span>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
       });
 
-      L.marker([LAT, LNG], { icon: icono, title: storeName })
-        .addTo(mapa)
-        .bindPopup(
-          `<strong>${storeName}</strong><br>${address}<br>${hours}`,
-        )
-        .openPopup();
+      L.marker([LAT, LNG], { icon: icono, title: storeName }).addTo(mapa);
+
+      const observador = new IntersectionObserver(
+        ([entrada]) => {
+          if (!entrada.isIntersecting) return;
+          div.querySelector(".store-map-logo")?.classList.add("cae");
+          observador.disconnect();
+        },
+        { threshold: 0.4 },
+      );
+      observador.observe(div);
     })();
 
     return () => {
@@ -116,37 +127,24 @@ export function StoreMap({ storeName, address, phone, hours, t }: Props) {
   const comoLlegar = `https://www.google.com/maps/dir/?api=1&destination=${LAT},${LNG}`;
 
   return (
-    <div className="isolate overflow-hidden rounded-2xl border border-line bg-card">
+    <div className="relative isolate overflow-hidden rounded-2xl border border-line bg-card">
       {/* El mapa necesita una altura fija: sin ella, el div mide 0 y no se ve. */}
-      <div ref={contenedor} className="h-72 w-full sm:h-96" aria-label={t.title} />
+      <div ref={contenedor} className="h-96 w-full sm:h-[28rem]" aria-label={t.title} />
 
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm">
-          <p className="font-semibold text-ink">{address}</p>
-          <p className="mt-1 text-ink-soft">Tel. {phone}</p>
-          <p className="text-ink-soft">{hours}</p>
-        </div>
-
+      {/* Tarjeta flotante sobre el mapa. En celular pasa debajo para no tapar
+          el marcador. `z-[500]` > capas de Leaflet (que llegan a 400). */}
+      <div className="static z-[500] border-t border-line bg-card/95 p-5 backdrop-blur sm:absolute sm:left-4 sm:top-4 sm:max-w-xs sm:rounded-xl sm:border sm:shadow-xl sm:shadow-black/10">
+        <p className="font-display text-base font-bold text-brand">{storeName}</p>
+        <p className="mt-1 text-sm font-medium text-ink">{address}</p>
+        <p className="mt-1 text-sm text-ink-soft">Tel. {phone}</p>
+        <p className="text-sm text-ink-soft">{hours}</p>
         <a
           href={comoLlegar}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-bold text-on-brand transition hover:-translate-y-0.5 hover:bg-brand-dark"
+          className="btn-primary mt-4 px-5 py-2.5 text-sm"
         >
-          <svg
-            aria-hidden
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
-          {t.howToGet}
+          {t.howToGet} <span className="btn-arrow">→</span>
         </a>
       </div>
     </div>

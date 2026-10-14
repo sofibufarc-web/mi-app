@@ -1,8 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { LoginForm } from "@/components/login-form";
 import { WiedmerLogo } from "@/components/wiedmer-logo";
+import { getStoreConfig } from "@/lib/data-source";
 import { getT } from "@/lib/request-context";
+import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 
 export const metadata = { title: "Ingresar" };
 export const dynamic = "force-dynamic";
@@ -14,58 +17,64 @@ type Props = {
 /**
  * Login de CLIENTES: una sola contraseña, sin usuario.
  *
- * El admin entra por `/login/admin`, con email y contraseña. Hay un link chico
- * al pie, discreto: el cliente no tiene por qué mirarlo.
+ * Pantalla partida: a la izquierda una foto con una frase institucional (solo
+ * en pantallas grandes); a la derecha el formulario sobre fondo blanco.
+ * El admin entra por `/login/admin`, con email y contraseña.
  */
 export default async function LoginPage({ searchParams }: Props) {
   const query = await searchParams;
   const rawNext = query.next;
   const next = (Array.isArray(rawNext) ? rawNext[0] : rawNext) ?? "";
-  const t = await getT();
+  const [t, config] = await Promise.all([getT(), getStoreConfig()]);
+  const whatsappUrl = `https://wa.me/${normalizeWhatsappNumber(config.whatsappNumber)}`;
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-surface p-4">
-      {/* Un halo azul detrás de la tarjeta. `blur-3xl` sobre un círculo de
-          color es la forma barata de hacer un degradado suave y orgánico. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-brand/15 blur-3xl"
-      />
-
-      <div className="relative w-full max-w-sm">
-        <Link
-          href="/"
-          aria-label="Wiedmer"
-          className="flex justify-center text-brand transition-opacity hover:opacity-80"
-        >
-          <WiedmerLogo size="lg" />
-        </Link>
-
-        <div className="animate-fade-up mt-8 rounded-2xl border border-line bg-card p-7 shadow-xl shadow-ink/5">
-          <h1 className="text-lg font-bold tracking-tight">{t.login.title}</h1>
-          <p className="mt-1 mb-6 text-sm text-ink-soft">{t.login.subtitle}</p>
-
-          <LoginForm next={next} t={t} modo="cliente" />
-        </div>
-
-        <div className="animate-fade-up mt-5 rounded-xl border border-line bg-card/60 p-4 [animation-delay:120ms]">
-          <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
-            {t.login.whyTitle}
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
-            {t.login.whyText}
-          </p>
-        </div>
-
-        <p className="mt-5 text-center text-xs text-ink-soft">
-          <Link href="/" className="underline transition hover:text-brand">
-            {t.login.back}
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <aside className="relative hidden overflow-hidden bg-brand-darker text-white lg:block">
+        <Image src="/img/hero.webp" alt="" fill priority sizes="50vw" className="animate-hero-zoom object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-darker via-brand-darker/55 to-brand-darker/25" />
+        <div className="relative flex h-full flex-col justify-between p-12">
+          <Link href="/" aria-label="Wiedmer" className="text-white transition-opacity hover:opacity-80">
+            <WiedmerLogo size="lg" />
           </Link>
-          {" · "}
-          <Link href="/login/admin" className="underline transition hover:text-brand">
-            {t.login.adminLink}
+          <p className="max-w-md font-display text-4xl font-extrabold leading-tight tracking-tight">{t.login.heroPhrase}</p>
+        </div>
+      </aside>
+
+      <div className="flex flex-col items-center justify-center bg-card p-6 sm:p-10">
+        <div className="w-full max-w-sm">
+          <Link href="/" aria-label="Wiedmer" className="mb-8 flex justify-center text-brand transition-opacity hover:opacity-80 lg:hidden">
+            <WiedmerLogo size="lg" />
           </Link>
-        </p>
+
+          <div className="animate-fade-up">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight">{t.login.title}</h1>
+            <p className="mt-1 mb-7 text-sm text-ink-soft">{t.login.subtitle}</p>
+            <LoginForm next={next} t={t} modo="cliente" />
+
+            <p className="mt-5 text-center text-sm text-ink-soft">
+              {t.login.noUser}{" "}
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline-offset-2 hover:underline">
+                {t.login.askSeller}
+              </a>
+            </p>
+          </div>
+
+          <div className="animate-fade-up mt-7 rounded-xl border border-line bg-surface p-4 [animation-delay:120ms]">
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">{t.login.whyTitle}</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">{t.login.whyText}</p>
+          </div>
+
+          <p className="mt-5 text-center text-xs text-ink-soft">
+            <Link href="/" className="underline transition hover:text-brand">
+              {t.login.back}
+            </Link>
+            {" · "}
+            <Link href="/login/admin" className="underline transition hover:text-brand">
+              {t.login.adminLink}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

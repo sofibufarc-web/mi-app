@@ -12,6 +12,7 @@ export function CartBadge({ t }: { t: Dictionary["common"] }) {
   return (
     <Link
       href="/carrito"
+      data-cart-target
       className="relative flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition hover:bg-surface"
     >
       <svg
@@ -36,7 +37,7 @@ export function CartBadge({ t }: { t: Dictionary["common"] }) {
       {ready && totalItems > 0 && (
         <span
           key={totalItems}
-          className="animate-fade-up absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-on-brand"
+          className="animate-cart-jump absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-on-accent"
         >
           {totalItems}
         </span>

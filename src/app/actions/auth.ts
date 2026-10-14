@@ -124,7 +124,13 @@ async function iniciarSesion(
 
   // `redirect()` funciona lanzando una excepción que Next atrapa, así que tiene
   // que quedar afuera de cualquier try/catch.
-  redirect(destino);
+  // `bienvenido=1` hace que la tienda muestre el saludo (ver WelcomeToast).
+  // Solo en la tienda: el panel no lo necesita.
+  redirect(
+    destino.startsWith("/admin")
+      ? destino
+      : `${destino}${destino.includes("?") ? "&" : "?"}bienvenido=1`,
+  );
 }
 
 /**
