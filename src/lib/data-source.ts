@@ -674,6 +674,12 @@ async function guardarProducto(input: ProductInput): Promise<Product> {
   return aProducto(filas[0]);
 }
 
+/** Cambia solo el stock. 0 = agotado, null = no se controla. */
+export async function setProductStock(id: string, stock: number | null): Promise<void> {
+  const filas = await sql`update public.products set stock = ${stock} where id = ${id} returning id`;
+  if (filas.length === 0) throw new Error(`No existe el producto ${id}`);
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   const filas = await sql`delete from public.products where id = ${id} returning id`;
   if (filas.length === 0) throw new Error(`No existe el producto ${id}`);

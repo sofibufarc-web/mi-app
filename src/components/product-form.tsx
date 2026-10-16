@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { saveProductAction, type FormState } from "@/app/admin/actions";
@@ -30,6 +30,72 @@ function SubmitButton({ editing }: { editing: boolean }) {
     >
       {pending ? "Guardando…" : editing ? "Guardar cambios" : "Crear producto"}
     </button>
+  );
+}
+
+/**
+ * Campo de stock con botón de "sin stock".
+ *
+ * No hay una columna nueva: la tienda ya entiende `stock === 0` como agotado
+ * (cartel en la tarjeta, variante tachada en la ficha). El botón solo escribe
+ * 0 en el input; se guarda recién al apretar "Guardar cambios".
+ * Vacío significa "no se controla stock" (el producto siempre figura disponible).
+ */
+function StockField({ initial }: { initial?: number | null }) {
+  const [value, setValue] = useState(initial == null ? "" : String(initial));
+  const soldOut = value.trim() !== "" && Number(value) === 0;
+  const tracked = value.trim() !== "";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-line bg-surface p-4 sm:col-span-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className={labelClass}>Stock</span>
+        <span
+          className={`rounded px-2 py-0.5 text-[11px] font-bold uppercase ${
+            soldOut
+              ? "bg-red-500/15 text-red-600 dark:text-red-400"
+              : "bg-brand-soft text-brand"
+          }`}
+        >
+          {soldOut
+            ? "Sin stock"
+            : tracked
+              ? `${value} en stock`
+              : "Disponible (no se controla)"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <input
+          name="stock"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Vacío = no se controla"
+          className={`${inputClass} sm:max-w-48`}
+        />
+        <button
+          type="button"
+          onClick={() => setValue("0")}
+          disabled={soldOut}
+          className="h-11 rounded-md border border-red-500/40 bg-red-500/10 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
+        >
+          Marcar sin stock
+        </button>
+        <button
+          type="button"
+          onClick={() => setValue("")}
+          disabled={!tracked}
+          className="h-11 rounded-md border border-line bg-card px-4 text-sm font-medium transition hover:bg-card/70 disabled:opacity-50"
+        >
+          Volver a disponible
+        </button>
+      </div>
+      <p className="text-[11px] text-ink-soft">
+        Con 0 la tienda muestra “Sin stock” en este artículo. Los botones
+        cambian el campo; se aplica al apretar “Guardar cambios”.
+      </p>
+    </div>
   );
 }
 
@@ -126,16 +192,7 @@ export function ProductForm({
             />
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className={labelClass}>Stock (opcional)</span>
-            <input
-              name="stock"
-              inputMode="numeric"
-              defaultValue={product?.stock ?? ""}
-              placeholder="Vacío = no se controla"
-              className={inputClass}
-            />
-          </label>
+          <StockField initial={product?.stock} />
 
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className={labelClass}>Descripción</span>

@@ -18,6 +18,7 @@ import {
   getUserByEmail,
   getUserById,
   setAuthPasswordByEmail,
+  setProductStock,
   setUserActive,
   setUserRole,
   updateStoreConfig,
@@ -118,6 +119,27 @@ export async function saveProductAction(
 
   revalidatePath("/", "layout");
   redirect("/admin/productos?guardado=1");
+}
+
+/** Botón rápido del listado: `sinStock=1` pone el stock en 0, si no lo deja sin controlar. */
+export async function toggleStockAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const permiso = await exigirAdmin();
+  if ("error" in permiso) return { error: permiso.error };
+
+  const id = text(formData, "id");
+  if (!id) return { error: "Falta el id del producto." };
+
+  try {
+    await setProductStock(id, text(formData, "sinStock") === "1" ? 0 : null);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No se pudo cambiar el stock." };
+  }
+
+  revalidatePath("/", "layout");
+  return { error: null, ok: true };
 }
 
 export async function deleteProductAction(

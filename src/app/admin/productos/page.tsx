@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { firstParam } from "@/components/catalog-filters";
 import { DeleteProductButton } from "@/components/delete-product-button";
+import { StockToggleButton } from "@/components/stock-toggle-button";
 import { ProductImage } from "@/components/product-image";
 import { getCategories, getProducts } from "@/lib/data-source";
 import { formatPrice } from "@/lib/format";
@@ -133,6 +134,11 @@ export default async function AdminProductosPage({ searchParams }: Props) {
                       Oculto
                     </span>
                   )}
+                  {product.stock === 0 && (
+                    <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-600 dark:text-red-400">
+                      Sin stock
+                    </span>
+                  )}
                   {product.featured && (
                     <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand">
                       Destacado
@@ -159,6 +165,7 @@ export default async function AdminProductosPage({ searchParams }: Props) {
                 >
                   Editar
                 </Link>
+                <StockToggleButton id={product.id} soldOut={product.stock === 0} />
                 <DeleteProductButton id={product.id} name={product.name} />
               </div>
             </li>
