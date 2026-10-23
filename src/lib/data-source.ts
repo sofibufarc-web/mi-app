@@ -99,6 +99,7 @@ type CategoryRow = {
   description: string | null;
   image: string | null;
   sort_order: number;
+  parent_id: string | null;
 };
 
 type StoreConfigRow = {
@@ -161,6 +162,7 @@ function aCategoria(r: CategoryRow): Category {
     description: r.description ?? undefined,
     image: r.image ?? undefined,
     order: r.sort_order,
+    parentId: r.parent_id ?? undefined,
   };
 }
 
@@ -327,13 +329,18 @@ export function ordenarVariantes(variantes: Product[]): Product[] {
   );
 }
 
+/** La categoría y sus subcategorías: "Doble A" muestra también lo de Lijas, Cintas y Varios. */
+function deLaCategoria(id: string): Fragmento {
+  return sql`(select c.id from public.categories c where c.id = ${id} or c.parent_id = ${id})`;
+}
+
 /** Arma el `where` de los padres: solo los que tienen alguna variante activa. */
 function dondePadres(f: ParentFilters): Fragmento {
   const cond: Fragmento[] = [
     sql`g.active`,
     sql`exists (select 1 from public.products v where v.parent_id = g.id and v.active)`,
   ];
-  if (f.categoryId) cond.push(sql`g.category_id = ${f.categoryId}`);
+  if (f.categoryId) cond.push(sql`g.category_id in ${deLaCategoria(f.categoryId)}`);
   if (f.brand) cond.push(sql`g.brand = ${f.brand}`);
   if (f.usage) cond.push(sql`(g.usage = ${f.usage} or g.usage = 'ambos')`);
   if (f.finish) cond.push(sql`g.finish = ${f.finish}`);
@@ -406,12 +413,21 @@ export async function getParents(
 export async function getCategoryStats(): Promise<
   Map<string, { count: number; brands: string[] }>
 > {
+  // Cada producto cuenta para su categoría y, si esta es una subcategoría,
+  // también para la de arriba (por eso el `union all`).
   const filas = await sql<{ category_id: string; brand: string | null; n: number }[]>`
-    select g.category_id, g.brand, count(*)::int as n
-    from public.product_parents g
-    where g.active and g.category_id is not null
-      and exists (select 1 from public.products v where v.parent_id = g.id and v.active)
-    group by g.category_id, g.brand`;
+    select x.cid as category_id, x.brand, count(*)::int as n
+    from (
+      select g.category_id as cid, g.brand from public.product_parents g
+      where g.active and g.category_id is not null
+        and exists (select 1 from public.products v where v.parent_id = g.id and v.active)
+      union all
+      select c.parent_id, g.brand from public.product_parents g
+      join public.categories c on c.id = g.category_id
+      where g.active and c.parent_id is not null
+        and exists (select 1 from public.products v where v.parent_id = g.id and v.active)
+    ) x
+    group by x.cid, x.brand`;
   const mapa = new Map<string, { count: number; brands: { name: string; n: number }[] }>();
   for (const f of filas) {
     const e = mapa.get(f.category_id) ?? { count: 0, brands: [] };
@@ -447,7 +463,7 @@ export async function getParentBySku(sku: string): Promise<ProductParent | null>
 
 /** Opciones para los filtros laterales de una categoría. */
 export async function getParentFacets(categoryId?: string): Promise<ParentFacets> {
-  const donde = categoryId ? sql`g.category_id = ${categoryId}` : sql`true`;
+  const donde = categoryId ? sql`g.category_id in ${deLaCategoria(categoryId)}` : sql`true`;
   const [marcas, tamanos, colores, usos, terminaciones] = await Promise.all([
     sql<{ v: string }[]>`
       select distinct g.brand as v from public.product_parents g

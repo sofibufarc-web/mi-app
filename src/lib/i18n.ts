@@ -83,6 +83,8 @@ const es = {
     subtitle:
       "Cada categoría abre su propia página con el listado completo y los filtros de búsqueda.",
     seeProducts: "Ver productos",
+    byBrand: "Por marca",
+    byType: "Por tipo de producto",
   },
 
   /**
@@ -410,6 +412,7 @@ const es = {
     sortRecent: "Más recientes",
     apply: "Aplicar",
     clear: "Limpiar",
+    toggle: "Filtrar",
   },
 
   search: {
@@ -563,6 +566,8 @@ const en = {
     subtitle:
       "Each category opens its own page with the full listing and search filters.",
     seeProducts: "See products",
+    byBrand: "By brand",
+    byType: "By product type",
   },
 
   carousel: {
@@ -862,6 +867,7 @@ const en = {
     sortRecent: "Most recent",
     apply: "Apply",
     clear: "Clear",
+    toggle: "Filter",
   },
 
   search: {

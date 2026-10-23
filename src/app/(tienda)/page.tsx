@@ -40,6 +40,10 @@ export default async function HomePage() {
   const whatsappUrl = `https://wa.me/${normalizeWhatsappNumber(config.whatsappNumber)}`;
   const counts = new Map([...stats].map(([id, s]) => [id, s.count]));
 
+  // De la home salen las hijas (cuelgan de su madre) y «Sin sección», que son
+  // los productos sin clasificar y no un rubro que alguien busque.
+  const destacadas = categories.filter((c) => !c.parentId && c.slug !== "sin-seccion");
+
   return (
     <>
       <Hero t={t} showPrices={showPrices} whatsappUrl={whatsappUrl} />
@@ -60,7 +64,7 @@ export default async function HomePage() {
         productsLabel={`+${(Math.floor(totalProductos / 100) * 100).toLocaleString(locale === "en" ? "en-US" : "es-AR")}`}
       />
 
-      <CategoryBento categories={categories} counts={counts} t={t} />
+      <CategoryBento categories={destacadas} counts={counts} t={t} />
 
       <About
         t={t}

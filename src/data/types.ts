@@ -49,6 +49,8 @@ export type Category = {
   image?: string;
   /** Orden en el menú y en los listados. Menor = primero. */
   order: number;
+  /** Si es una subcategoría, el id de la categoría de la que cuelga. Un solo nivel. */
+  parentId?: string;
 };
 
 export type StoreConfig = {
