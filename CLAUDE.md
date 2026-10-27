@@ -335,11 +335,19 @@ la cabecera de `/categoria/<slug>` y el fondo de las placas del carrusel.
   versión chica a un celular y la grande a un monitor, y **no agranda más allá
   del original** (comprobado: pedir 3840 px devuelve los 1254 nativos).
 
-Sobre la legibilidad del texto encima de la foto: la cabecera de categoría
-apila tres capas —foto, velo azul parejo y degradado horizontal opaco del lado
-del título—. El degradado no es decoración: sin él habría que elegir entre foto
-visible o título legible, porque algunas fotos son claras (lijas) y otras
-oscuras (impermeabilizantes).
+Sobre la cabecera de `/categoria/<slug>`: **la foto ya no es el fondo.** Antes se
+estiraba a todo el ancho con zoom y se recortaba a una tira del medio: una foto de
+1200 px a 1440 px o más salía borrosa y partía el producto por la mitad. Ahora la
+cabecera es un fondo azul de marca con el título y las subcategorías a la
+izquierda, y la foto **entera** a la derecha en una caja 16:9 (24 rem de ancho, sin
+zoom). Como el texto va sobre azul sólido, no hace falta velo ni degradado para
+que se lea. En celular la foto se oculta (`hidden lg:block`) para que los
+productos aparezcan enseguida.
+
+En la misma página, dos cambios para que el listado aparezca pronto: el cartel de
+"precios reservados" tiene una versión de una línea (`PriceGateBanner compact`) y
+los filtros van detrás de un botón **Filtrar** en celular
+(`src/components/filters-toggle.tsx`; en escritorio siguen como columna lateral).
 
 ### La cinta de colores — HOY SIN USO
 
@@ -456,6 +464,7 @@ mi-app/
 │       ├── 20260910203436_ids_de_mas_de_tres_digitos.sql
 │       ├── 20260911120000_baja_tabla_users.sql
 │       └── 20260911140000_storage_imagenes.sql  ← bucket de fotos y sus permisos
+│       (+ 20261023140000_subcategorias.sql ← categories.parent_id)
 ├── public/
 │   ├── uploads/              ← vacío: las fotos ahora van a Supabase Storage
 │   ├── img/categorias/       ← fotos .webp de cada categoría (+ SVG viejos)
@@ -609,6 +618,15 @@ base; cambia el camino.
 | `categories` | ids `c-001`… generados por una secuencia |
 | `products` | ids `p-001`…; `price` es `numeric`, no `float` |
 | `store_config` | una sola fila; `contact` y `colors` van como `jsonb` |
+
+**Subcategorías.** `categories.parent_id` (migración `20261023140000`) permite que
+una categoría cuelgue de otra, **un solo nivel**: "Doble A" tiene dentro Lijas,
+Cintas y Varios. Los productos siguen apuntando a la categoría hija; la madre los
+muestra sumando las de sus hijas (`deLaCategoria()` en `data-source.ts`). El
+menú, la home y el footer listan solo las de primer nivel; las hijas aparecen en
+el panel del mega-menú, como chips en la página de la madre y en el camino de
+migas de la hija. El panel `/admin/categorias` todavía no edita `parent_id`: hoy
+se asigna por SQL.
 
 **Dos formas de nombrar lo mismo.** Postgres usa snake_case (`category_id`) y la
 app camelCase (`categoryId`). La traducción vive en `data-source.ts` y en ningún
