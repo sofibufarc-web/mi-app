@@ -1421,9 +1421,13 @@ Variables a completar:
 | `DATABASE_URL` | La misma pantalla → Transaction pooler (6543). Hoy no la usa nadie; ver el recuadro de la sección 3 |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | La misma pantalla. Es pública: viaja al navegador |
+| `CLIENT_LOGIN_EMAIL` | Email de la cuenta compartida de clientes (rol `cliente` en Supabase). Es de servidor: sin `NEXT_PUBLIC_`, el visitante nunca la ve. Ver "Acceso de clientes" en la sección 5 |
 
-Las tres son **obligatorias**: sin base no arranca, y sin las de Supabase no
-hay login posible.
+Las tres primeras son **obligatorias**: sin base no arranca, y sin las de
+Supabase no hay login posible. `CLIENT_LOGIN_EMAIL` también hace falta para que
+los clientes puedan entrar: sin ella el sitio levanta, pero `/login` y el botón
+de cambiar la clave de `/admin/usuarios` responden "Falta la variable
+CLIENT_LOGIN_EMAIL".
 
 Ya no hay credenciales en el `.env`: las cuentas viven en Supabase Auth. Para
 crear el primer admin:
@@ -1448,10 +1452,14 @@ o usá el selector ES/EN del header.
 
 1. Subir el repo a GitHub.
 2. En Vercel: *New Project* → importar el repo → cargar en *Environment
-   Variables* `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL` y
-   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → *Deploy*.
-   Las tres son obligatorias: sin la primera el sitio no levanta, sin las otras
-   dos nadie puede iniciar sesión.
+   Variables* `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y `CLIENT_LOGIN_EMAIL` → *Deploy*.
+   Son obligatorias: sin la primera el sitio no levanta, sin las dos de
+   Supabase nadie puede iniciar sesión, y sin la última los clientes no pueden
+   entrar con la contraseña compartida.
+   > `.env.local` **no se sube a Vercel**: cada variable hay que cargarla a mano
+   > en el panel. Y una variable nueva no se aplica a deploys ya hechos: hay que
+   > hacer un *redeploy*. Es el error que pasó con `CLIENT_LOGIN_EMAIL`.
    La detección de idioma por país de IP **solo funciona en Vercel**: es Vercel
    quien agrega el header `x-vercel-ip-country`.
 3. Las migraciones se aplican desde tu máquina con `npm run db:push`, no en el
