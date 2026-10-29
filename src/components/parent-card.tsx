@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ParentCardMedia } from "@/components/parent-card-media";
+import { QuickAdd, type QuickAddLabels } from "@/components/quick-add";
 import type { CatalogContext } from "@/components/product-card";
 import { Reveal } from "@/components/reveal";
 import { WhatsappInquiryButton } from "@/components/price-gate";
@@ -54,6 +55,24 @@ export function ParentCard({
     .filter(Boolean)
     .join(" · ");
 
+  // Solo los textos que usa el agregado rápido, no el diccionario entero: todo lo
+  // que se le pasa a un componente cliente viaja al navegador.
+  const labels: QuickAddLabels = {
+    add: v.quickAdd,
+    chooseOptions: v.chooseOptions,
+    inOrder: v.inOrder,
+    close: v.closeSheet,
+    pickColor: v.pickColor,
+    pickSize: v.pickSize,
+    code: v.code,
+    addToOrder: v.addToOrder,
+    added: v.addedToOrder,
+    outOfStock: t.product.outOfStock,
+    decrease: t.product.decreaseAria,
+    increase: t.product.increaseAria,
+    quantity: t.product.quantityAria,
+  };
+
   const href = `/producto/${parent.slug}`;
   const image = parent.images[0] ?? parent.variants.find((x) => x.images[0])?.images[0];
   const desde = Math.min(...parent.variants.map((x) => x.price));
@@ -102,12 +121,32 @@ export function ParentCard({
 
         <div className="mt-auto pt-2">
           {showPrices ? (
-            <p className="animate-fade-in text-lg font-bold text-accent-text [animation-duration:600ms]" style={{ animationDelay: "calc(var(--reveal-delay, 0ms) + 250ms)" }}>
-              {parent.variants.length > 1 && (
-                <span className="mr-1 text-[11px] font-medium text-ink-soft">{v.from}</span>
-              )}
-              {formatPrice(desde)}
-            </p>
+            <>
+              <p className="animate-fade-in text-lg font-bold text-accent-text [animation-duration:600ms]" style={{ animationDelay: "calc(var(--reveal-delay, 0ms) + 250ms)" }}>
+                {parent.variants.length > 1 && (
+                  <span className="mr-1 text-[11px] font-medium text-ink-soft">{v.from}</span>
+                )}
+                {formatPrice(desde)}
+              </p>
+              {/* Agregar sin entrar a la ficha. Va dentro de `showPrices`: los
+                  precios que recibe nunca llegan a un visitante anónimo. */}
+              <div className="mt-2">
+                <QuickAdd
+                  parent={{ name: parent.name, slug: parent.slug, image }}
+                  variants={parent.variants.map((x) => ({
+                    id: x.id,
+                    sku: x.sku,
+                    color: x.color,
+                    colorHex: x.colorHex,
+                    sizeLabel: x.sizeLabel,
+                    image: x.images[0] && x.images[0] !== parent.images[0] ? x.images[0] : undefined,
+                    price: x.price,
+                    stock: x.stock,
+                  }))}
+                  labels={labels}
+                />
+              </div>
+            </>
           ) : (
             <WhatsappInquiryButton
               className="h-9"

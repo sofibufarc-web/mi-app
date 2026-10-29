@@ -385,6 +385,10 @@ const es = {
     loadMore: "Cargar más",
     noVariantStock: "Sin stock",
     skip: "Saltar",
+    quickAdd: "Agregar",
+    chooseOptions: "Elegir opciones",
+    inOrder: "en el pedido",
+    closeSheet: "Cerrar",
   },
 
   /** Textos del muro de precios: lo que ve quien no inició sesión. */
@@ -843,6 +847,10 @@ const en = {
     loadMore: "Load more",
     noVariantStock: "Out of stock",
     skip: "Skip",
+    quickAdd: "Add",
+    chooseOptions: "Choose options",
+    inOrder: "in your order",
+    closeSheet: "Close",
   },
 
   gate: {

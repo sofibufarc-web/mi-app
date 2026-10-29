@@ -150,7 +150,7 @@ export function CheckoutForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start"
+      className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start"
     >
       <div className="rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide">

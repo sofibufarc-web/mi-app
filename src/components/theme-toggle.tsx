@@ -113,7 +113,7 @@ export function ThemeToggle({
       // activado o no, cosa que el icono solo no comunica.
       aria-pressed={isDark}
       title={isDark ? t.light : t.dark}
-      className="relative flex h-9 w-9 items-center justify-center rounded-md text-ink-soft transition hover:bg-surface hover:text-ink"
+      className="relative flex h-11 w-11 items-center justify-center rounded-md text-ink-soft transition hover:bg-surface hover:text-ink sm:h-9 sm:w-9"
     >
       {/* Los dos iconos están siempre en el DOM y se cruzan con una rotación:
           queda más prolijo que hacerlos aparecer y desaparecer de golpe. */}

@@ -59,7 +59,7 @@ export function LanguageSwitcher({
             onClick={() => choose(locale)}
             // aria-current le dice al lector de pantalla cuál está activo.
             aria-current={active ? "true" : undefined}
-            className={`rounded px-2 py-1 text-xs font-bold uppercase transition ${
+            className={`flex min-h-11 min-w-11 items-center justify-center rounded px-2 text-xs font-bold uppercase transition sm:min-h-0 sm:min-w-0 sm:py-1 ${
               active
                 ? "bg-brand text-on-brand"
                 : "text-ink-soft hover:bg-surface hover:text-ink"

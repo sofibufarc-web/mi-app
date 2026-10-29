@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition, 
 
 import { ProductImage } from "@/components/product-image";
 import { useCart } from "@/components/use-cart";
+import { reduceMotion, volarAlCarrito } from "@/lib/fly-to-cart";
 import { formatPrice } from "@/lib/format";
 import type { Dictionary } from "@/lib/i18n";
 import { buildInquiryMessage, buildWhatsappUrl } from "@/lib/whatsapp";
@@ -52,9 +53,6 @@ function litros(size?: string): number | null {
   return m[2] ? Number(m[1]) / Number(m[2]) : Number(m[1]);
 }
 
-const reduceMotion = () =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 /** Número que "gira" hasta el nuevo valor en 450 ms (sin animación si se pidió reducir). */
 function useRollingNumber(target: number): number {
   const [value, setValue] = useState(target);
@@ -79,45 +77,6 @@ function useRollingNumber(target: number): number {
     return () => cancelAnimationFrame(raf);
   }, [target]);
   return value;
-}
-
-/** Miniatura que vuela desde la foto hasta el ícono del carrito. */
-function volarAlCarrito(origen: HTMLElement | null) {
-  if (!origen || reduceMotion()) return;
-  const destino = document.querySelector<HTMLElement>("[data-cart-target]");
-  if (!destino) return;
-  const a = origen.getBoundingClientRect();
-  const b = destino.getBoundingClientRect();
-  const clon = document.createElement("div");
-  Object.assign(clon.style, {
-    position: "fixed",
-    left: `${a.left + a.width / 2 - 28}px`,
-    top: `${a.top + a.height / 2 - 28}px`,
-    width: "56px",
-    height: "56px",
-    borderRadius: "12px",
-    zIndex: "9999",
-    pointerEvents: "none",
-    background: "var(--color-card)",
-    border: "1px solid var(--color-line)",
-    boxShadow: "0 8px 24px rgb(0 0 0 / 0.2)",
-    backgroundSize: "contain",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "center",
-  });
-  const img = origen.querySelector("img");
-  if (img?.currentSrc) clon.style.backgroundImage = `url("${img.currentSrc}")`;
-  document.body.appendChild(clon);
-  const dx = b.left + b.width / 2 - (a.left + a.width / 2);
-  const dy = b.top + b.height / 2 - (a.top + a.height / 2);
-  const anim = clon.animate(
-    [
-      { transform: "translate(0,0) scale(1)", opacity: 1 },
-      { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0.4 },
-    ],
-    { duration: 650, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-  );
-  anim.onfinish = () => clon.remove();
 }
 
 type Estado = "idle" | "loading" | "done";
@@ -290,7 +249,10 @@ export function VariantPicker({ parent, variants, initialSku, showPrices, whatsa
     );
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    // `grid-cols-[minmax(0,1fr)]` en celular: sin esa columna explícita, la
+    // tabla de presentaciones (`min-w-[34rem]`) estiraba la columna a 546 px y
+    // toda la página se desplazaba de costado en una pantalla de 390.
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       {/* ------------------------------ Izquierda: foto ------------------------------ */}
       <div>
         <div
@@ -422,7 +384,7 @@ export function VariantPicker({ parent, variants, initialSku, showPrices, whatsa
           <button
             type="button"
             onClick={copiar}
-            className="inline-flex min-h-8 items-center gap-1 rounded border border-line px-2 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+            className="inline-flex min-h-10 items-center gap-1 rounded border border-line px-3 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
           >
             {copiado ? (
               <>

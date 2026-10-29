@@ -129,14 +129,14 @@ export function SearchBox({
         role="combobox"
         aria-expanded={mostrar}
         aria-controls={listaId}
-        className="h-10 w-full rounded-full border border-line bg-surface pl-4 pr-24 text-sm outline-none transition focus:border-brand focus:bg-card"
+        className="h-11 w-full rounded-full border border-line bg-surface pl-4 pr-24 text-sm outline-none transition focus:border-brand focus:bg-card sm:h-10"
       />
       <kbd className="pointer-events-none absolute right-24 top-2.5 hidden rounded border border-line bg-card px-1.5 font-mono text-[11px] text-ink-soft group-focus-within:hidden sm:block">
         /
       </kbd>
       <button
         type="submit"
-        className="btn-primary absolute right-1 top-1 h-8 rounded-full px-4 text-xs"
+        className="btn-primary absolute right-1 top-1 h-9 rounded-full px-4 text-xs sm:h-8"
       >
         {buttonLabel}
       </button>

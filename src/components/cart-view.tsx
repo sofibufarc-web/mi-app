@@ -34,7 +34,7 @@ export function CartView({ t }: { t: Dictionary }) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
         {items.map((item) => (
           <li key={item.productId} className="flex gap-4 p-4">

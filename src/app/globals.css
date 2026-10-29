@@ -172,6 +172,19 @@ html {
   outline-offset: 2px;
 }
 
+/*
+ * El <dialog> de la hoja de "agregar" recibe el foco por código al abrirse (no es
+ * un control que se tabule), y sin esto se dibujaba un marco azul alrededor de
+ * toda la hoja. Los botones de adentro conservan su anillo.
+ *
+ * Va acá y no como clase de Tailwind porque la regla global de arriba está fuera
+ * de las capas (@layer), y en CSS una regla sin capa le gana a una con capa
+ * aunque la de la capa sea más específica.
+ */
+dialog:focus-visible {
+  outline: none;
+}
+
 /* Selección de texto con el color de marca. */
 ::selection {
   background: var(--color-brand);

@@ -35,13 +35,13 @@ export function FinalCta({
                 <Image src={seller.photo} alt="" width={88} height={88} className="h-22 w-22 rounded-full border-4 border-white/30 object-cover" />
               )}
               <p className="mt-3 text-xs font-bold uppercase tracking-[0.25em] text-sky-200">{t.homeNew.seller}</p>
-              <p className="font-display text-xl font-bold">{seller?.name ?? t.homeNew.sellerFallback}</p>
+              <p className="mt-1 font-display text-xl font-bold">{seller?.name ?? t.homeNew.sellerFallback}</p>
             </div>
 
             <h2 className="mx-auto mt-6 max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">{t.homeCta.title}</h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/75">{t.homeCta.subtitle}</p>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
               <Magnetic>
                 <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-8 py-3.5 text-base font-bold text-white transition hover:brightness-105 active:scale-[0.97]">
                   <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
