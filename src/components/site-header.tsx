@@ -44,14 +44,21 @@ export async function SiteHeader() {
   ]);
   const { t, locale, role } = viewer;
 
-  const menu = categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    image: c.image,
-    count: stats.get(c.id)?.count ?? 0,
-    brands: stats.get(c.id)?.brands ?? [],
-  }));
+  // En el menú van solo las categorías de primer nivel; las subcategorías
+  // cuelgan de su padre (ver `subcategories`).
+  const menu = categories
+    .filter((c) => !c.parentId)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      image: c.image,
+      count: stats.get(c.id)?.count ?? 0,
+      brands: stats.get(c.id)?.brands ?? [],
+      subcategories: categories
+        .filter((h) => h.parentId === c.id)
+        .map((h) => ({ name: h.name, slug: h.slug, count: stats.get(h.id)?.count ?? 0 })),
+    }));
 
   return (
     <HeaderShell>

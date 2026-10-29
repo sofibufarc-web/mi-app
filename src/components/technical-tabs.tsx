@@ -30,10 +30,13 @@ export function TechnicalTabs({
   technical,
   related,
   t,
+  compact = false,
 }: {
   technical: TechnicalSheet;
   related: RelatedLite[];
   t: Dictionary["variants"];
+  /** Versión angosta para la columna de compra: datos en una columna, productos relacionados en dos. */
+  compact?: boolean;
 }) {
   const { addItem } = useCart();
   const disponibles: { id: Tab; label: string }[] = [
@@ -48,8 +51,10 @@ export function TechnicalTabs({
   const tab = activa && disponibles.some((d) => d.id === activa) ? activa : disponibles[0].id;
 
   return (
-    <section className="mt-14 border-t border-line pt-8">
-      <h2 className="text-xl font-bold tracking-tight">{t.technicalTitle}</h2>
+    <section className={compact ? "mt-8 border-t border-line pt-6" : "mt-14 border-t border-line pt-8"}>
+      <h2 className={compact ? "text-base font-bold tracking-tight" : "text-xl font-bold tracking-tight"}>
+        {t.technicalTitle}
+      </h2>
 
       <div role="tablist" className="mt-4 flex gap-1 overflow-x-auto border-b border-line">
         {disponibles.map((d) => (
@@ -77,7 +82,9 @@ export function TechnicalTabs({
       {/* key: al cambiar de pestaña el panel se remonta y entra deslizando. */}
       <div key={tab} role="tabpanel" className="animate-fade-up pt-6 [animation-duration:300ms]">
         {tab === "datos" && (
-          <dl className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2">
+          <dl
+            className={`grid gap-px overflow-hidden rounded-xl border border-line bg-line ${compact ? "" : "sm:grid-cols-2"}`}
+          >
             {technical.datos!.map((d) => (
               <div key={d.label} className="bg-card px-4 py-3">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{d.label}</dt>
@@ -127,7 +134,7 @@ export function TechnicalTabs({
         )}
 
         {tab === "rel" && (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className={`grid gap-3 sm:grid-cols-2 ${compact ? "" : "lg:grid-cols-4"}`}>
             {related.map((r) => (
               <li key={r.id} className="flex flex-col overflow-hidden rounded-xl border border-line bg-card">
                 <div className="relative aspect-square bg-surface">

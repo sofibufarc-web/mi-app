@@ -57,6 +57,10 @@ export function ParentCard({
   const href = `/producto/${parent.slug}`;
   const image = parent.images[0] ?? parent.variants.find((x) => x.images[0])?.images[0];
   const desde = Math.min(...parent.variants.map((x) => x.price));
+  // stock === 0 es "marcado sin stock"; null/undefined = no se controla (hay).
+  // El padre se muestra agotado solo si TODAS sus variantes lo están: si queda
+  // un color o un tamaño disponible, el producto se puede seguir pidiendo.
+  const sinStock = parent.variants.every((x) => x.stock === 0);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-line bg-card transition duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg hover:shadow-brand/10">
@@ -68,6 +72,7 @@ export function ParentCard({
         swatches={[...colores.values()]}
         brand={parent.brand}
         viewLabel={v.viewVariants}
+        outOfStockLabel={sinStock ? t.product.outOfStock : undefined}
       />
 
       <div className="flex flex-1 flex-col gap-1 p-3">

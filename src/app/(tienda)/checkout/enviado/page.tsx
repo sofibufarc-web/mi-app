@@ -1,17 +1,28 @@
 import Link from "next/link";
 
 import { getStoreConfig } from "@/lib/data-source";
+import { formatOrderNumber } from "@/lib/format";
 import { getT } from "@/lib/request-context";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 
-export const metadata = { title: "Pedido enviado" };
+export const metadata = { title: "Pedido enviado", robots: { index: false } };
 
 /**
  * Pantalla de confirmación. El carrito ya se vació en el paso anterior
  * (`CheckoutForm`), así que acá solo mostramos el mensaje.
  */
-export default async function PedidoEnviadoPage() {
-  const [config, t] = await Promise.all([getStoreConfig(), getT()]);
+export default async function PedidoEnviadoPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [config, t, query] = await Promise.all([getStoreConfig(), getT(), searchParams]);
+
+  // `?pedido=12` lo pone el checkout cuando el pedido quedó registrado. Es solo
+  // para mostrarlo: se acepta únicamente si son dígitos.
+  const pedido = typeof query.pedido === "string" && /^\d{1,9}$/.test(query.pedido)
+    ? Number(query.pedido)
+    : null;
 
   return (
     <div className="container-wiedmer py-20">
@@ -32,6 +43,11 @@ export default async function PedidoEnviadoPage() {
         <h1 className="mt-5 text-2xl font-bold tracking-tight">
           {t.checkout.sentTitle}
         </h1>
+        {pedido && (
+          <p className="mt-2 font-mono text-sm font-semibold text-brand">
+            {t.checkout.sentNumber} {formatOrderNumber(pedido)}
+          </p>
+        )}
         <p className="mt-3 text-sm leading-relaxed text-ink-soft">
           {t.checkout.sentText}
         </p>

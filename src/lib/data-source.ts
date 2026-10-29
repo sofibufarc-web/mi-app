@@ -9,9 +9,13 @@ import type {
   AppUser,
   Category,
   CategoryInput,
+  Order,
+  OrderLine,
+  OrderStatus,
   Product,
   ProductFilters,
   ProductInput,
+  Customer,
   Role,
   StoreConfig,
 } from "@/data/types";
@@ -817,6 +821,124 @@ export async function deleteCategory(
     await tx`delete from public.categories where id = ${id}`;
     return { ok: true as const };
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pedidos                                                                     */
+/* -------------------------------------------------------------------------- */
+
+type OrderRow = {
+  id: string; // bigint: el driver lo entrega como texto, igual que `numeric`
+  created_at: Date;
+  customer_name: string;
+  customer_email: string | null;
+  customer_address: string | null;
+  customer_note: string | null;
+  items: OrderLine[];
+  total: string;
+  status: OrderStatus;
+};
+
+function aPedido(r: OrderRow): Order {
+  return {
+    id: Number(r.id),
+    createdAt: r.created_at.toISOString(),
+    customer: {
+      name: r.customer_name,
+      email: r.customer_email ?? undefined,
+      address: r.customer_address ?? undefined,
+      note: r.customer_note ?? undefined,
+    },
+    items: r.items,
+    total: Number(r.total),
+    status: r.status,
+  };
+}
+
+/**
+ * Registra un pedido y devuelve el número que le tocó.
+ *
+ * Las líneas llegan YA armadas por el servidor (con nombre y precio leídos de la
+ * base, no del navegador): ver `placeOrderAction`. Acá solo se guarda.
+ */
+export async function createOrder(input: {
+  customer: Customer;
+  items: OrderLine[];
+  total: number;
+  locale: string;
+}): Promise<number> {
+  const { customer, items, total, locale } = input;
+  const filas = await sql<{ id: string }[]>`
+    insert into public.orders
+      (customer_name, customer_email, customer_address, customer_note, items, total, locale)
+    values
+      (${customer.name}, ${customer.email ?? null}, ${customer.address ?? null},
+       ${customer.note ?? null}, ${sql.json(items)}, ${total}, ${locale})
+    returning id`;
+  return Number(filas[0].id);
+}
+
+/** Los pedidos, del más nuevo al más viejo; opcionalmente de un solo estado. */
+export async function getOrders(
+  opciones: { status?: OrderStatus; limit?: number } = {},
+): Promise<Order[]> {
+  const { status, limit = 200 } = opciones;
+  const filas = await sql<OrderRow[]>`
+    select * from public.orders
+    ${status ? sql`where status = ${status}` : sql``}
+    order by created_at desc, id desc
+    limit ${limit}`;
+  return filas.map(aPedido);
+}
+
+/** Cuántos pedidos hay en cada estado. Alimenta las pestañas y el globito del menú. */
+export async function countOrdersByStatus(): Promise<Record<OrderStatus, number>> {
+  const filas = await sql<{ status: OrderStatus; n: number }[]>`
+    select status, count(*)::int as n from public.orders group by status`;
+  const conteo: Record<OrderStatus, number> = { nuevo: 0, atendido: 0, cancelado: 0 };
+  for (const f of filas) conteo[f.status] = f.n;
+  return conteo;
+}
+
+export async function setOrderStatus(id: number, status: OrderStatus): Promise<void> {
+  const filas = await sql`
+    update public.orders set status = ${status} where id = ${id} returning id`;
+  if (filas.length === 0) throw new Error(`No existe el pedido ${id}`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sitemap                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Todo lo que un buscador tiene que poder encontrar: los slugs de las
+ * categorías y de los productos (padres) visibles en el catálogo.
+ *
+ * Es una consulta aparte y no `getParents()` porque el sitemap solo necesita el
+ * slug y la fecha, y `getParents()` además trae las variantes de cada producto.
+ * Sin ningún precio: el sitemap es público.
+ */
+export async function getSitemapEntries(): Promise<{
+  categorias: string[];
+  productos: Array<{ slug: string; updatedAt: string }>;
+}> {
+  const [categorias, productos] = await Promise.all([
+    sql<{ slug: string }[]>`
+      select slug from public.categories order by sort_order, slug`,
+    sql<{ slug: string; updated_at: Date }[]>`
+      select g.slug, g.updated_at
+      from public.product_parents g
+      where g.active
+        and exists (select 1 from public.products v where v.parent_id = g.id and v.active)
+      order by g.slug`,
+  ]);
+  return {
+    categorias: categorias.map((c) => c.slug),
+    productos: productos.map((p) => ({
+      slug: p.slug,
+      updatedAt: p.updated_at.toISOString(),
+    })),
+  };
 }
 
 /* -------------------------------------------------------------------------- */

@@ -4,7 +4,7 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { getStoreConfig } from "@/lib/data-source";
 import { getT } from "@/lib/request-context";
 
-export const metadata = { title: "Finalizar pedido" };
+export const metadata = { title: "Finalizar pedido", robots: { index: false } };
 
 /**
  * Página del checkout. Es Server Component: lee la config de la tienda (nombre

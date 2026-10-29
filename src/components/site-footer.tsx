@@ -59,7 +59,7 @@ export async function SiteFooter() {
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wide">{t.common.categories}</h2>
           <ul className="mt-4 space-y-2 text-sm text-white/65">
-            {categories.map((category) => (
+            {categories.filter((c) => !c.parentId).map((category) => (
               <li key={category.id}>
                 <Link href={`/categoria/${category.slug}`} className="link-grow pb-0.5 hover:text-white">
                   {category.name}

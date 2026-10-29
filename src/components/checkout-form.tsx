@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { placeOrderAction } from "@/app/actions/orders";
 import { useCart } from "@/components/use-cart";
 import type { Customer } from "@/data/types";
 import { formatPrice } from "@/lib/format";
@@ -14,13 +15,25 @@ import { buildOrderMessage, buildWhatsappUrl } from "@/lib/whatsapp";
  * Checkout SIN pago.
  *
  * Al confirmar:
- *   1. Armamos el mensaje de texto del pedido (`buildOrderMessage`).
- *   2. Abrimos `https://wa.me/<numero>?text=…` en una pestaña nueva.
- *   3. Vaciamos el carrito y vamos a la pantalla de confirmación.
+ *   1. Abrimos YA una pestaña en blanco (todavía sin dirección).
+ *   2. Guardamos el pedido en el servidor (`placeOrderAction`): queda registrado
+ *      para el panel y vuelve con su número y los precios verificados.
+ *   3. Armamos el mensaje de texto del pedido (`buildOrderMessage`) y mandamos la
+ *      pestaña a `https://wa.me/<numero>?text=…`.
+ *   4. Vaciamos el carrito y vamos a la pantalla de confirmación.
  *
- * Detalle importante: `window.open` tiene que dispararse en el mismo tick del
- * click del usuario, si no el navegador lo bloquea como popup. Por eso no hay
- * ningún `await` antes de abrirlo.
+ * ## Por qué la pestaña se abre ANTES de guardar
+ *
+ * Los navegadores solo permiten `window.open` si ocurre en el mismo instante del
+ * clic del usuario; si se llama después de esperar algo (un `await`), lo tratan
+ * como un popup no deseado y lo bloquean. Safari es el más estricto. Como
+ * guardar el pedido es una espera, se abre la pestaña primero y, cuando
+ * está listo el mensaje, se le cambia la dirección.
+ *
+ * ## Si no se puede guardar, el pedido sale igual
+ *
+ * El registro es un extra. Si falla, se manda el mensaje con lo que hay en el
+ * carrito, sin número de pedido: igual que antes de que existiera el registro.
  */
 export function CheckoutForm({
   storeName,
@@ -41,13 +54,15 @@ export function CheckoutForm({
     note: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   function updateField(field: keyof Customer, value: string) {
     setCustomer((current) => ({ ...current, [field]: value }));
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sending) return;
     setError(null);
 
     if (!customer.name.trim()) {
@@ -59,22 +74,56 @@ export function CheckoutForm({
       return;
     }
 
+    // Paso 1: la pestaña tiene que abrirse en este mismo instante, antes de
+    // cualquier `await` (ver el comentario de arriba).
+    const whatsappTab = window.open("", "_blank");
+    if (whatsappTab) {
+      // Equivale al `noopener` de antes: la pestaña de WhatsApp no tiene acceso
+      // a esta. (No se puede pasar `noopener` a `window.open` porque entonces
+      // devuelve `null` y no podríamos cambiarle la dirección después.)
+      whatsappTab.opener = null;
+      whatsappTab.document.title = storeName;
+      whatsappTab.document.body.textContent = t.checkout.sending;
+    }
+
+    setSending(true);
+
+    const cleaned: Customer = {
+      name: customer.name.trim(),
+      email: customer.email?.trim() || undefined,
+      address: customer.address?.trim() || undefined,
+      note: customer.note?.trim() || undefined,
+    };
+
+    // Paso 2: registrar. Del carrito solo viaja qué y cuánto; el servidor pone
+    // los nombres y los precios.
+    const result = await placeOrderAction({
+      customer: cleaned,
+      items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+    }).catch(() => null);
+    const saved = result?.ok ? result : null;
+
+    // Paso 3: el mensaje. Con el pedido guardado se usan los datos del servidor
+    // (son los que quedaron registrados); si no, los del carrito.
     const message = buildOrderMessage({
       storeName,
-      customer: {
-        name: customer.name.trim(),
-        email: customer.email?.trim() || undefined,
-        address: customer.address?.trim() || undefined,
-        note: customer.note?.trim() || undefined,
-      },
-      items,
-      total: totalPrice,
+      customer: cleaned,
+      items: saved?.items ?? items,
+      total: saved?.total ?? totalPrice,
+      orderNumber: saved?.number,
     });
-
-    window.open(buildWhatsappUrl(whatsappNumber, message), "_blank", "noopener");
+    const url = buildWhatsappUrl(whatsappNumber, message);
 
     clear();
-    router.push("/checkout/enviado");
+
+    if (whatsappTab) {
+      whatsappTab.location.href = url;
+      router.push(saved ? `/checkout/enviado?pedido=${saved.number}` : "/checkout/enviado");
+    } else {
+      // El navegador no dejó abrir la pestaña: se sigue en ESTA, camino a
+      // WhatsApp. El pedido ya quedó registrado y el carrito vaciado.
+      window.location.assign(url);
+    }
   }
 
   const fieldClass =
@@ -202,12 +251,13 @@ export function CheckoutForm({
 
         <button
           type="submit"
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-[#25D366] py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:brightness-95"
+          disabled={sending}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-[#25D366] py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:brightness-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
         >
           <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
             <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.4 14c-.2.6-1.2 1.2-1.7 1.2-.4 0-1 .1-3.3-.9-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1-1.4-1-2.6s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.3.5-.3.3c-.1.2-.3.3-.1.6.1.3.7 1.2 1.5 1.9 1 .9 1.8 1.1 2 1.2.3.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.3Z" />
           </svg>
-          {t.checkout.send}
+          {sending ? t.checkout.sending : t.checkout.send}
         </button>
 
         <p className="mt-3 text-xs text-ink-soft">{t.checkout.sendHint}</p>

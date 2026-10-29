@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { JsonLd } from "@/components/json-ld";
 import { ParentGrid } from "@/components/parent-card";
 import { PriceGateBanner } from "@/components/price-gate";
 import { Reveal } from "@/components/reveal";
@@ -16,6 +17,7 @@ import {
   getProductsByIds,
   getStoreConfig,
 } from "@/lib/data-source";
+import { siteConfig } from "@/config/site";
 import { getViewer } from "@/lib/request-context";
 
 /**
@@ -30,10 +32,29 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const parent = await getParentBySlug(slug);
-  if (!parent) return { title: "Producto no encontrado" };
+  if (!parent) return { title: "Producto no encontrado", robots: { index: false } };
+
+  // La marca va en el título si el nombre todavía no la dice: "Látex Interior –
+  // Sinteplast". Es lo que la gente escribe al buscar.
+  const marca = parent.brand?.trim();
+  const title =
+    marca && !parent.name.toLowerCase().includes(marca.toLowerCase())
+      ? `${parent.name} – ${marca}`
+      : parent.name;
+  const description =
+    parent.description.split("\n\n")[0]?.slice(0, 160) ||
+    `${title} al por mayor. Catálogo de Wiedmer, distribuidor para pinturerías y ferreterías en Rosario.`;
+
+  // El canonical NO lleva `?codigo=`: cada color o tamaño tiene su URL para
+  // poder compartirla, pero para Google es una sola ficha (la del producto).
+  const url = `/producto/${parent.slug}`;
   return {
-    title: parent.name,
-    description: parent.description.split("\n\n")[0]?.slice(0, 160) || undefined,
+    title,
+    description,
+    alternates: { canonical: url },
+    // Al definir `openGraph` acá se reemplaza el del layout entero, por eso se
+    // repiten `siteName` y `locale`. La imagen se hereda de `opengraph-image`.
+    openGraph: { type: "website", siteName: "Wiedmer", locale: "es_AR", title, description, url },
   };
 }
 
@@ -96,8 +117,28 @@ export default async function ProductoPage({ params, searchParams }: Props) {
   });
   const parecidos = otros.filter((p) => p.id !== parent.id).slice(0, 4);
 
+  // Migas de pan para Google: en los resultados la dirección se ve como
+  // "wiedmer.com.ar › Pinturas › Látex" en vez de una URL larga.
+  const migas = [
+    { name: t.common.home, path: "/" },
+    ...(category ? [{ name: category.name, path: `/categoria/${category.slug}` }] : []),
+    { name: parent.name, path: `/producto/${parent.slug}` },
+  ];
+
   return (
     <div className="container-wiedmer pb-28 pt-8 lg:pb-8">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: migas.map((miga, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: miga.name,
+            item: `${siteConfig.url}${miga.path === "/" ? "" : miga.path}`,
+          })),
+        }}
+      />
       <nav className="text-xs text-ink-soft">
         <Link href="/" className="transition hover:text-brand">
           {t.common.home}
@@ -129,6 +170,9 @@ export default async function ProductoPage({ params, searchParams }: Props) {
           showPrices={showPrices}
           whatsappNumber={config.whatsappNumber}
           t={t}
+          ficha={
+            showPrices ? <TechnicalTabs technical={parent.technical} related={related} t={t.variants} compact /> : null
+          }
         />
       </div>
 
@@ -142,8 +186,6 @@ export default async function ProductoPage({ params, searchParams }: Props) {
           </div>
         </div>
       )}
-
-      {showPrices && <TechnicalTabs technical={parent.technical} related={related} t={t.variants} />}
 
       {!showPrices && (
         <Reveal className="mt-12 block">

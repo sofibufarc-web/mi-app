@@ -169,8 +169,13 @@ export const config = {
   /**
    * Qué rutas pasan por acá. Excluimos los assets estáticos (_next, favicon,
    * uploads, imágenes) para no gastar tiempo en cada archivo.
+   *
+   * También quedan afuera los archivos que leen los robots (imagen para
+   * compartir, sitemap, robots.txt): tienen que ser públicos siempre, aunque
+   * algún día se active `requireLoginForCatalog`, y no tiene sentido gastarles
+   * una consulta de sesión ni ponerles la cookie de idioma.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|uploads|img|plantilla-precios.xlsx).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|opengraph-image|sitemap.xml|robots.txt|uploads|img|plantilla-precios.xlsx).*)",
   ],
 };

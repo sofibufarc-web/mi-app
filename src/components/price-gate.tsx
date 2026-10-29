@@ -141,7 +141,24 @@ export function WhatsappInquiryButton({
  * Va una sola vez arriba del listado, no en cada ficha: repetir el mismo aviso
  * veinte veces en la misma pantalla cansa y no informa más.
  */
-export function PriceGateBanner({ t }: { t: Dictionary }) {
+export function PriceGateBanner({ t, compact = false }: { t: Dictionary; compact?: boolean }) {
+  // Versión de una línea para los listados: el aviso informa, pero no tiene
+  // que empujar los productos fuera de la pantalla.
+  if (compact) {
+    return (
+      <aside className="flex items-center gap-3 rounded-lg border border-brand/25 bg-brand-soft px-4 py-2.5">
+        <LockIcon className="h-4 w-4 shrink-0 text-brand" />
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">{t.gate.bannerTitle}</p>
+        <Link
+          href="/login"
+          className="shrink-0 rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-on-brand transition hover:bg-brand-dark"
+        >
+          {t.gate.bannerButton}
+        </Link>
+      </aside>
+    );
+  }
+
   return (
     <aside className="flex h-full flex-col gap-4 rounded-xl border border-brand/25 bg-brand-soft p-5 sm:flex-row sm:items-center">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-on-brand">

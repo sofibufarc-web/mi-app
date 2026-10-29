@@ -25,6 +25,7 @@ export function ParentCardMedia({
   swatches,
   brand,
   viewLabel,
+  outOfStockLabel,
 }: {
   href: string;
   name: string;
@@ -33,6 +34,8 @@ export function ParentCardMedia({
   swatches: Swatch[];
   brand?: string;
   viewLabel: string;
+  /** Texto "Sin stock"; si viene, se dibuja la etiqueta y se atenúa la foto. */
+  outOfStockLabel?: string;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const shown = hover ?? image;
@@ -45,10 +48,20 @@ export function ParentCardMedia({
         aria-label={name}
       >
         <ViewTransition name={transitionName} share="morph" default="none">
-          <div className="absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105">
+          <div
+            className={`absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 ${
+              outOfStockLabel ? "opacity-60" : ""
+            }`}
+          >
             <ProductImage src={shown} alt={name} />
           </div>
         </ViewTransition>
+
+        {outOfStockLabel && (
+          <span className="absolute right-2 top-2 rounded bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-page">
+            {outOfStockLabel}
+          </span>
+        )}
 
         {brand && (
           <span className="absolute left-2 top-2 rounded bg-card/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand shadow-sm">

@@ -70,14 +70,19 @@ export default async function TiendaLayout({ children }: LayoutProps<"/">) {
           en el header porque el header tiene `backdrop-filter`, que rompe el
           `position: fixed` de sus hijos. */}
       <MobileNav
-        categories={categories.map((c) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          image: c.image,
-          count: stats.get(c.id)?.count ?? 0,
-          brands: [],
-        }))}
+        categories={categories
+          .filter((c) => !c.parentId)
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            image: c.image,
+            count: stats.get(c.id)?.count ?? 0,
+            brands: [],
+            subcategories: categories
+              .filter((h) => h.parentId === c.id)
+              .map((h) => ({ name: h.name, slug: h.slug, count: stats.get(h.id)?.count ?? 0 })),
+          }))}
         labels={{
           home: t.nav.home,
           categories: t.nav.categories,

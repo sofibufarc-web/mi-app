@@ -6,7 +6,7 @@ import { ParentGrid } from "@/components/parent-card";
 import { getParents, getStoreConfig } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 
-export const metadata = { title: "Búsqueda" };
+export const metadata = { title: "Búsqueda", robots: { index: false } };
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

@@ -116,15 +116,35 @@ export type Customer = {
   note?: string;
 };
 
+/** Estados de un pedido registrado. Ver la migración `20261029120000_pedidos.sql`. */
+export type OrderStatus = "nuevo" | "atendido" | "cancelado";
+
 /**
- * Pedido armado en el checkout. Hoy NO se persiste: solo se convierte en el
- * mensaje de WhatsApp. Cuando exista Supabase, esto va a una tabla `orders`.
+ * Una línea del pedido, tal como se guardó: foto del momento de la compra, no
+ * una referencia al producto. Si después cambia el precio o se borra el
+ * artículo, el pedido viejo sigue diciendo lo que se pidió y a cuánto.
+ */
+export type OrderLine = {
+  productId: string;
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
+};
+
+/**
+ * Pedido registrado en la base. Se crea cuando el cliente confirma en el
+ * checkout y después se abre WhatsApp con el mensaje; el panel lo lista en
+ * `/admin/pedidos`.
  */
 export type Order = {
+  /** Es también el número de pedido que ve el cliente: "Pedido N° 0012". */
+  id: number;
+  createdAt: string; // ISO
   customer: Customer;
-  items: CartItem[];
+  items: OrderLine[];
   total: number;
-  createdAt: string;
+  status: OrderStatus;
 };
 
 /** Lo que recibe `upsertProduct`: sin id = alta, con id = edición. */

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import type { ProductInput, ProductUsage, Role, TechnicalSheet } from "@/data/types";
+import type { OrderStatus, ProductInput, ProductUsage, Role, TechnicalSheet } from "@/data/types";
 import { parsePriceValue } from "@/lib/price-parse";
 import {
   confirmUserEmail,
@@ -18,6 +18,7 @@ import {
   getUserByEmail,
   getUserById,
   setAuthPasswordByEmail,
+  setOrderStatus,
   setProductStock,
   setUserActive,
   setUserRole,
@@ -139,6 +140,36 @@ export async function toggleStockAction(
   }
 
   revalidatePath("/", "layout");
+  return { error: null, ok: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pedidos                                                                     */
+/* -------------------------------------------------------------------------- */
+
+const ESTADOS_DE_PEDIDO: OrderStatus[] = ["nuevo", "atendido", "cancelado"];
+
+/** Cambia el estado de un pedido (nuevo / atendido / cancelado). */
+export async function setOrderStatusAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const permiso = await exigirAdmin();
+  if ("error" in permiso) return { error: permiso.error };
+
+  const id = Number(text(formData, "id"));
+  const estado = text(formData, "status") as OrderStatus;
+  if (!Number.isInteger(id) || id < 1) return { error: "Falta el número de pedido." };
+  if (!ESTADOS_DE_PEDIDO.includes(estado)) return { error: "Estado inválido." };
+
+  try {
+    await setOrderStatus(id, estado);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No se pudo cambiar el estado." };
+  }
+
+  // Todo el panel: el globito del menú con los pedidos nuevos vive en el layout.
+  revalidatePath("/admin", "layout");
   return { error: null, ok: true };
 }
 

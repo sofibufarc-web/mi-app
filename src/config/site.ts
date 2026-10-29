@@ -23,6 +23,18 @@
 
 export const siteConfig = {
   /**
+   * Dirección oficial del sitio, sin barra final. Es la versión con `www`
+   * porque `wiedmer.com.ar` redirige ahí (ver la sección de dominio en
+   * CLAUDE.md).
+   *
+   * Se usa para todo lo que tiene que ser una URL ABSOLUTA: el sitemap, las
+   * etiquetas canonical, la imagen que se ve al compartir el link por WhatsApp
+   * y los datos estructurados para Google. Un buscador o WhatsApp no saben
+   * resolver "/logo.png" porque no están "dentro" de nuestro sitio.
+   */
+  url: "https://www.wiedmer.com.ar",
+
+  /**
    * DOS niveles de acceso. El rol es una columna de la tabla `profiles`:
    *
    * - `cliente`: habilita ver los precios y armar pedidos.

@@ -7,7 +7,7 @@ import { getStoreConfig } from "@/lib/data-source";
 import { getT } from "@/lib/request-context";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 
-export const metadata = { title: "Ingresar" };
+export const metadata = { title: "Ingresar", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 type Props = {

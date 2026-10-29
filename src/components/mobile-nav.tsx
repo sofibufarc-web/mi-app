@@ -89,6 +89,17 @@ export function MobileNav({
                   {c.name}
                   <span className="text-sm font-medium text-ink-soft">{c.count}</span>
                 </Link>
+                {c.subcategories?.length ? (
+                  <ul className="flex flex-wrap gap-2 pb-4">
+                    {c.subcategories.map((h) => (
+                      <li key={h.slug}>
+                        <Link href={`/categoria/${h.slug}`} className="inline-block rounded-full border border-line px-3 py-1.5 text-sm font-semibold text-ink-soft">
+                          {h.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>

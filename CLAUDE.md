@@ -21,6 +21,8 @@ Aires, Entre Ríos, Córdoba y La Pampa.
 | Catálogo público de productos y categorías | Pasarela de pagos |
 | Carrito persistente en el navegador | Cuentas de usuario individuales |
 | Checkout que arma un pedido y lo envía por **WhatsApp** | Facturación / stock en tiempo real |
+| Pedidos **registrados** en el panel (`/admin/pedidos`) | |
+| SEO y vista previa del link con el logo (Open Graph) | |
 | Panel `/admin` protegido por login genérico | Historial de listas anteriores |
 | Muro de precios: sin login se ve el catálogo pero no los precios | Precios distintos por cliente |
 | Descarga de la lista de precios en Excel (solo clientes) | Envíos / logística |
@@ -465,6 +467,7 @@ mi-app/
 │       ├── 20260911120000_baja_tabla_users.sql
 │       └── 20260911140000_storage_imagenes.sql  ← bucket de fotos y sus permisos
 │       (+ 20261023140000_subcategorias.sql ← categories.parent_id)
+│       (+ 20261029120000_pedidos.sql       ← tabla orders)
 ├── public/
 │   ├── uploads/              ← vacío: las fotos ahora van a Supabase Storage
 │   ├── img/categorias/       ← fotos .webp de cada categoría (+ SVG viejos)
@@ -543,10 +546,15 @@ mi-app/
         ├── login/page.tsx
         ├── actualizar-password/page.tsx ← donde aterriza el link del mail
         ├── actions/auth.ts             ← Server Actions de login y logout
+        ├── actions/orders.ts           ← registra el pedido ANTES de abrir WhatsApp
+        ├── robots.ts  sitemap.ts       ← para buscadores (ver 8 ter)
+        ├── opengraph-image.tsx         ← la imagen que se ve al compartir el link
+        ├── apple-icon.png              ← ícono para la pantalla de inicio del iPhone
         ├── admin/
         │   ├── layout.tsx  page.tsx  actions.ts
         │   ├── productos/{page.tsx,nuevo/,[id]/}
         │   ├── categorias/page.tsx
+        │   ├── pedidos/page.tsx        ← pedidos recibidos, por estado
         │   ├── precios/page.tsx
         │   └── configuracion/page.tsx
         └── api/admin/                  ← endpoints del panel
@@ -800,8 +808,18 @@ type CartItem   = { productId, sku, name, price, quantity, image? };
 type OrderInput = { customer: { name, email?, address?, note? }, items: CartItem[], total: number };
 ```
 
-`Order` no se persiste: se arma en memoria en el checkout y se convierte en el
-mensaje de WhatsApp.
+```ts
+type Order = {
+  id: number;             // el "Pedido N° 0012": identidad autoincremental
+  createdAt: string;
+  customer: Customer;
+  items: OrderLine[];     // FOTO del momento: sku, nombre y precio escritos ahí
+  total: number;
+  status: "nuevo" | "atendido" | "cancelado";
+};
+```
+
+`Order` sí se persiste desde el 29/10/2026 (tabla `orders`). Ver la sección 7.
 
 ---
 
@@ -1410,8 +1428,37 @@ _Nota:_ Entregar por la mañana
 ```
 
 Se codifica con `encodeURIComponent` y se abre `https://wa.me/<numero>?text=<msg>`
-en una pestaña nueva. Después se redirige a `/checkout/enviado` y **se vacía el
-carrito**.
+en una pestaña nueva. Después se redirige a `/checkout/enviado?pedido=<n>` y
+**se vacía el carrito**.
+
+### Registro de pedidos (`/admin/pedidos`)
+
+Antes de abrir WhatsApp, `CheckoutForm` llama a `placeOrderAction`
+(`src/app/actions/orders.ts`), que deja una copia del pedido en la tabla `orders`.
+El panel la lista por estado (nuevo / atendido / cancelado) y el menú muestra un
+globito con los nuevos. El número de pedido aparece en el mensaje de WhatsApp, en
+el panel y en la pantalla de confirmación, para cruzar uno con otro.
+
+- **Del navegador solo se acepta qué y cuánto** (`productId` y `quantity`). El
+  nombre, el código y el precio se leen de la base en el servidor, y el mensaje de
+  WhatsApp se arma con ESOS datos: lo guardado y lo enviado son siempre lo mismo.
+  Si no, una Server Action (que es un POST cualquiera puede armar a mano) permitiría
+  registrar pedidos con precios inventados.
+- **La pestaña de WhatsApp se abre ANTES de guardar.** `window.open` solo se permite
+  en el mismo instante del clic; después de un `await` el navegador lo bloquea
+  (Safari, sobre todo). Se abre en blanco, se guarda el pedido y recién entonces se
+  le cambia la dirección. Si el navegador no deja abrirla, se sigue en la misma
+  pestaña hacia WhatsApp.
+- **Si el registro falla, el pedido sale igual** por WhatsApp, sin número. El
+  registro es un extra: un cliente no pierde su pedido por un problema nuestro.
+- **El registro no confirma el envío.** Se crea cuando el cliente confirma en la
+  web, no cuando aprieta «enviar» en WhatsApp. Por eso el estado inicial es
+  «nuevo» y no «recibido».
+- `items` guarda una foto (sku, nombre, precio) y no referencias a `products`: si
+  el precio cambia o el artículo se borra, el pedido viejo sigue diciendo lo que se
+  pidió y a cuánto. La tabla tiene RLS activo y cero políticas, como las demás.
+- El mensaje termina con el link del sitio, así WhatsApp muestra la tarjeta con el
+  logo (la imagen de `opengraph-image.tsx`) dentro del chat.
 
 El carrito vive en `localStorage` (clave `wiedmer_cart_v1`). La fuente de verdad
 es un store externo (`src/lib/cart-store.ts`) al que los componentes se conectan
@@ -1547,6 +1594,55 @@ de Excel por código no cambió. El catálogo, la búsqueda y la ficha listan
 
 ---
 
+## 8 ter. Dominio, SEO y vista previa de links
+
+### Dominio
+
+`wiedmer.com.ar` está registrado en **DonWeb** (plan «Registro dominio .COM.AR»,
+a nombre del cliente; se renueva cada año, **no se da de baja nunca**: «Solicitud
+de baja» en esa pantalla borra el dominio). Los **nameservers** son
+`ns1.vercel-dns.com` y `ns2.vercel-dns.com`, o sea que el DNS lo maneja **Vercel**
+(Domains → DNS Records). Cloudflare ya no se usa. `wiedmer.com.ar` redirige (308)
+a `www.wiedmer.com.ar`, que es la dirección oficial: `siteConfig.url` en
+`src/config/site.ts`.
+
+- En Supabase → Authentication → URL Configuration: Site URL
+  `https://www.wiedmer.com.ar` y `…/actualizar-password` en Redirect URLs.
+- **El dominio no tiene casillas de mail.** Si algún día hacen falta
+  (`ventas@wiedmer.com.ar` es el contacto que muestra el sitio), hay que cargar
+  los registros MX en Vercel DNS.
+
+### SEO
+
+- `metadata` del layout raíz (`src/app/layout.tsx`): `metadataBase`, título con la
+  marca PRIMERO (para la búsqueda «wiedmer»), Open Graph y Twitter.
+- **Canonical por página.** Producto: sin `?codigo=` (cada color tiene su URL para
+  compartirla, pero para Google es una sola ficha). Categoría: la página 2, 3… se
+  apuntan a sí mismas; los filtros vuelven a la categoría. Ojo: un `canonical`
+  puesto en el layout se heredaría en TODAS las páginas y las apuntaría a la home.
+- `robots.ts`, `sitemap.ts` (`force-dynamic`: no toca la base en el build, y un
+  producto nuevo aparece sin esperar un deploy; sin precios) y `noindex` en
+  login, carrito, checkout y buscador interno. El proxy excluye estos archivos y
+  la imagen para compartir de su `matcher`.
+- Datos estructurados (`src/components/json-ld.tsx`): `HardwareStore` + `WebSite`
+  en la home, `BreadcrumbList` en categoría y producto. **No hay `Product` con
+  `offers` a propósito**: llevaría el precio, y el muro de precios dice que sin
+  sesión no viaja ni uno.
+- Falta, y solo lo puede hacer una persona: **Google Search Console** (verificar
+  con un TXT en Vercel DNS y enviar el sitemap) y el **Perfil de Empresa en
+  Google**, que es lo que más pesa para la búsqueda por nombre.
+
+### Vista previa del link (WhatsApp y compañía)
+
+`src/app/opengraph-image.tsx` dibuja un PNG de 1200×630 (≈80 KB) con el logo y
+Next agrega solo las etiquetas `og:image`. WhatsApp es el más exigente: si la
+imagen pesa mucho, no muestra la vista previa. La tipografía (Libre Franklin, OFL)
+está en `src/assets/fonts/` en formato **WOFF**, porque el motor que dibuja
+(Satori) no lee WOFF2 ni fuentes variables. WhatsApp guarda las vistas previas en
+caché: para ver una nueva, agregar `?v=2` al link.
+
+---
+
 ## 9. Pendientes / próximos pasos
 
 1. ~~**Supabase**~~ — hecho: los datos viven en Postgres. El esquema está en
@@ -1559,9 +1655,9 @@ de Excel por código no cambió. El catálogo, la búsqueda y la ficha listan
    mails por hora y solo a integrantes del proyecto. Sin un SMTP configurado en
    el panel de Supabase, el link de restablecer contraseña no le llega a un
    cliente real.
-5. **Persistencia de pedidos** — hoy el pedido solo viaja por WhatsApp; guardarlo
-   en una tabla `orders` para tener historial. Ahora que hay base, es agregar una
-   migración y una función en `data-source.ts`.
+5. ~~**Persistencia de pedidos**~~ — hecho (sección 7): tabla `orders` y
+   `/admin/pedidos`. Faltaría avisar al vendedor cuando entra uno nuevo (hoy lo ve
+   al abrir el panel; el aviso real es el mensaje de WhatsApp).
 6. **Precios mayorista/minorista** — hoy hay un solo precio y el corte es
    "ve / no ve". El lugar donde se decide es `canSeePrices()` en
    `src/lib/auth.ts`: está en una función propia justamente para que el día que

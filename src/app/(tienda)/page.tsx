@@ -6,12 +6,25 @@ import { FinalCta } from "@/components/home/final-cta";
 import { Hero } from "@/components/home/hero";
 import { StatsStrip } from "@/components/home/stats-strip";
 import { HowToBuy } from "@/components/how-to-buy";
+import { JsonLd } from "@/components/json-ld";
 import { Reveal } from "@/components/reveal";
 import { StoreMap } from "@/components/store-map";
 import { siteConfig } from "@/config/site";
 import { countProducts, getCategories, getCategoryStats, getStoreConfig } from "@/lib/data-source";
 import { getViewer } from "@/lib/request-context";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
+
+/**
+ * `canonical` le dice a Google cuál es LA dirección de esta página, aunque
+ * llegue con parámetros (`/?utm_source=…`) o desde `wiedmer.com.ar` sin `www`.
+ * Evita que el mismo contenido cuente como varias páginas distintas.
+ */
+export const metadata = { alternates: { canonical: "/" } };
+
+/** "(0341) 430-5931" → "+543414305931", el formato internacional que pide Google. */
+function telefonoInternacional(phone: string): string {
+  return `+54${phone.replace(/\D/g, "").replace(/^0/, "")}`;
+}
 
 /**
  * Home: PORTADA INSTITUCIONAL. No lista ni un producto; los artículos viven en
@@ -44,8 +57,64 @@ export default async function HomePage() {
   // los productos sin clasificar y no un rubro que alguien busque.
   const destacadas = categories.filter((c) => !c.parentId && c.slug !== "sin-seccion");
 
+  /*
+   * Quién es la empresa, para Google. Son solo datos reales y públicos (los que
+   * ya muestra el sitio en el pie y en el mapa). Las redes sociales entran
+   * recién cuando estén cargadas en `siteConfig.company`.
+   *
+   * No hay email a propósito: no es un dato que Google necesite y evita
+   * publicar una casilla que quizá nadie lea.
+   */
+  const empresa = {
+    "@context": "https://schema.org",
+    "@type": "HardwareStore",
+    "@id": `${siteConfig.url}/#empresa`,
+    name: "Wiedmer",
+    alternateName: ["Wiedmer Mayorista", "Wiedmer Distribuidora"],
+    description:
+      "Importador y distribuidor mayorista de artículos para pinturerías y ferreterías.",
+    url: siteConfig.url,
+    logo: `${siteConfig.url}/icon.svg`,
+    image: `${siteConfig.url}/opengraph-image`,
+    telephone: telefonoInternacional(config.contact.phone),
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: config.contact.address.split(",")[0]?.trim(),
+      addressLocality: "Rosario",
+      addressRegion: "Santa Fe",
+      addressCountry: "AR",
+    },
+    // Mismas coordenadas que usa el mapa del depósito (`store-map.tsx`).
+    geo: { "@type": "GeoCoordinates", latitude: -32.91719, longitude: -60.67866 },
+    areaServed: [
+      "Gran Rosario",
+      "Santa Fe",
+      "Entre Ríos",
+      "Córdoba",
+      "La Pampa",
+      "Norte de Buenos Aires",
+    ],
+    sameAs: [company.instagram, company.facebook].filter(Boolean),
+  };
+
+  // Le avisa a Google que "Wiedmer" es el nombre del SITIO (es lo que muestra
+  // arriba del título en los resultados) y que wiedmer.com.ar es el mismo.
+  const sitio = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteConfig.url}/#sitio`,
+    name: "Wiedmer",
+    alternateName: ["Wiedmer Mayorista", "wiedmer.com.ar"],
+    url: siteConfig.url,
+    inLanguage: "es-AR",
+    publisher: { "@id": `${siteConfig.url}/#empresa` },
+  };
+
   return (
     <>
+      <JsonLd data={empresa} />
+      <JsonLd data={sitio} />
+
       <Hero t={t} showPrices={showPrices} whatsappUrl={whatsappUrl} />
 
       <StatsStrip

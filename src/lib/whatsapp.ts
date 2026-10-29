@@ -1,5 +1,6 @@
+import { siteConfig } from "@/config/site";
 import type { CartItem, Customer } from "@/data/types";
-import { formatPrice } from "@/lib/format";
+import { formatOrderNumber, formatPrice } from "@/lib/format";
 
 /**
  * Arma el mensaje de WhatsApp del pedido y la URL para abrirlo.
@@ -14,35 +15,52 @@ import { formatPrice } from "@/lib/format";
 export function buildOrderMessage(params: {
   storeName: string;
   customer: Customer;
-  items: CartItem[];
+  items: Array<Pick<CartItem, "name" | "sku" | "price" | "quantity">>;
   total: number;
+  /** Número con el que quedó registrado en el panel. Sin él, el título es genérico. */
+  orderNumber?: number;
 }): string {
-  const { storeName, customer, items, total } = params;
+  const { storeName, customer, items, total, orderNumber } = params;
   const lines: string[] = [];
+  // Línea separadora. Es un carácter común (no un emoji), así que se ve igual
+  // en Android, iPhone y WhatsApp Web.
+  const separador = "━━━━━━━━━━━━━━━";
 
-  lines.push(`*NUEVO PEDIDO — ${storeName.toUpperCase()}*`);
+  lines.push(
+    orderNumber
+      ? `🧾 *PEDIDO N° ${formatOrderNumber(orderNumber)} — ${storeName.toUpperCase()}*`
+      : `🧾 *NUEVO PEDIDO — ${storeName.toUpperCase()}*`,
+  );
   lines.push("");
-  lines.push(`*Cliente:* ${customer.name}`);
-  if (customer.email) lines.push(`*Email:* ${customer.email}`);
-  if (customer.address) lines.push(`*Dirección:* ${customer.address}`);
+  lines.push(`👤 *Cliente:* ${customer.name}`);
+  if (customer.email) lines.push(`✉️ *Email:* ${customer.email}`);
+  if (customer.address) lines.push(`📍 *Dirección:* ${customer.address}`);
   lines.push("");
-  lines.push("*Productos:*");
+  lines.push(`📦 *Productos (${items.length})*`);
+  lines.push(separador);
 
   items.forEach((item, index) => {
     const subtotal = item.price * item.quantity;
-    lines.push(`${index + 1}. ${item.name}`);
+    lines.push(`*${index + 1}.* ${item.name}`);
+    lines.push(`      Cód. ${item.sku}`);
     lines.push(
-      `   Cód. ${item.sku} · ${item.quantity} x ${formatPrice(item.price)} = ${formatPrice(subtotal)}`,
+      `      ${item.quantity} × ${formatPrice(item.price)} = *${formatPrice(subtotal)}*`,
     );
+    if (index < items.length - 1) lines.push("");
   });
 
-  lines.push("");
-  lines.push(`*TOTAL: ${formatPrice(total)}*`);
+  lines.push(separador);
+  lines.push(`💰 *TOTAL: ${formatPrice(total)}*`);
 
   if (customer.note) {
     lines.push("");
-    lines.push(`_Nota:_ ${customer.note}`);
+    lines.push(`📝 _${customer.note}_`);
   }
+
+  // El link al final hace que WhatsApp muestre la tarjeta con el logo de la
+  // empresa (la imagen de `src/app/opengraph-image.tsx`) debajo del pedido.
+  lines.push("");
+  lines.push(siteConfig.url);
 
   return lines.join("\n");
 }

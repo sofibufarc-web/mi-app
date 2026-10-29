@@ -453,6 +453,8 @@ const es = {
     notePlaceholder: "Horario de entrega, forma de pago, aclaraciones…",
     yourOrder: "Tu pedido",
     send: "Enviar pedido por WhatsApp",
+    sending: "Preparando tu pedido…",
+    sentNumber: "Pedido N°",
     sendHint:
       "Se abre WhatsApp con el pedido ya escrito. No se cobra nada acá: el pago se coordina con el vendedor.",
     errorName: "Necesitamos tu nombre para identificar el pedido.",
@@ -907,6 +909,8 @@ const en = {
     notePlaceholder: "Delivery window, payment method, remarks…",
     yourOrder: "Your order",
     send: "Send order on WhatsApp",
+    sending: "Preparing your order…",
+    sentNumber: "Order no.",
     sendHint:
       "WhatsApp opens with the order already written. Nothing is charged here: payment is arranged with the sales rep.",
     errorName: "We need your name to identify the order.",

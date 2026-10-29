@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition, type ReactNode } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { useCart } from "@/components/use-cart";
@@ -41,6 +41,8 @@ type Props = {
   showPrices: boolean;
   whatsappNumber: string;
   t: Dictionary;
+  /** Ficha técnica ya armada por el servidor (solo con sesión); se dibuja bajo el botón de compra. */
+  ficha?: ReactNode;
 };
 
 /** Litros de un tamaño como "1/4 lt" o "20 lt"; null si no es un volumen. */
@@ -120,7 +122,7 @@ function volarAlCarrito(origen: HTMLElement | null) {
 
 type Estado = "idle" | "loading" | "done";
 
-export function VariantPicker({ parent, variants, initialSku, showPrices, whatsappNumber, t }: Props) {
+export function VariantPicker({ parent, variants, initialSku, showPrices, whatsappNumber, t, ficha }: Props) {
   const v = t.variants;
   const { addItem } = useCart();
 
@@ -517,6 +519,9 @@ export function VariantPicker({ parent, variants, initialSku, showPrices, whatsa
             </Link>
           </div>
         )}
+
+        {/* Ficha técnica: justo debajo de precio, variante y botón, para tenerla a la vista sin scrollear. */}
+        {ficha}
       </div>
 
       {/* --------------------------- Tabla de presentaciones --------------------------- */}

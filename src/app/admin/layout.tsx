@@ -5,7 +5,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { AdminNav } from "@/components/admin-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WiedmerLogo } from "@/components/wiedmer-logo";
-import { getUserById } from "@/lib/data-source";
+import { countOrdersByStatus, getUserById } from "@/lib/data-source";
 import { getSession, getT, getTheme } from "@/lib/request-context";
 
 /**
@@ -35,7 +35,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     redirect("/login/admin?next=/admin");
   }
 
-  const [t, theme] = await Promise.all([getT(), getTheme()]);
+  const [t, theme, pedidos] = await Promise.all([
+    getT(),
+    getTheme(),
+    countOrdersByStatus(),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -75,7 +79,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
       <div className="container-wiedmer flex flex-1 flex-col gap-6 py-6 lg:flex-row">
         <aside className="lg:w-52 lg:shrink-0">
-          <AdminNav />
+          <AdminNav pedidosNuevos={pedidos.nuevo} />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

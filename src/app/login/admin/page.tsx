@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/login-form";
 import { WiedmerLogo } from "@/components/wiedmer-logo";
 import { getT } from "@/lib/request-context";
 
-export const metadata = { title: "Acceso administrador" };
+export const metadata = { title: "Acceso administrador", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 type Props = {

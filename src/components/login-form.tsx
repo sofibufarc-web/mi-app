@@ -129,13 +129,20 @@ export function LoginForm({
       </label>
       )}
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-ink-soft">
+      {/*
+        Acá NO hay un <label> envolviendo el campo y el botón del ojo, a
+        propósito. Un <label> reenvía los clics al campo que contiene, y con un
+        <button> adentro los dos comportamientos se pisan (Safari es el que peor
+        lo lleva). Por eso la etiqueta va aparte, enlazada con `htmlFor`/`id`.
+      */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="login-password" className="text-xs font-semibold text-ink-soft">
           {t.login.password}
-        </span>
+        </label>
         {/* `relative` para poder apoyar el botón del ojo adentro del campo. */}
         <div className="relative">
           <input
+            id="login-password"
             name="password"
             // Todo el truco del ojo es este atributo: "password" tapa los
             // caracteres con puntitos, "text" los muestra.
@@ -164,7 +171,7 @@ export function LoginForm({
             <EyeIcon crossed={showPassword} />
           </button>
         </div>
-      </label>
+      </div>
 
       {state.error && (
         <p

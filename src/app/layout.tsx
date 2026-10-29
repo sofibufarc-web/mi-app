@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo, JetBrains_Mono, Libre_Franklin } from "next/font/google";
 
+import { siteConfig } from "@/config/site";
 import { getLocale, getTheme } from "@/lib/request-context";
 
 import "./globals.css";
@@ -32,13 +33,65 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+/**
+ * Metadatos por defecto de TODO el sitio. Cada página puede pisar los suyos
+ * (título, descripción, canonical) con su propio `metadata` o
+ * `generateMetadata`; lo que no pise, lo hereda de acá.
+ *
+ * Qué hace cada bloque:
+ *
+ * - `metadataBase`: la URL absoluta del sitio. Next la usa para convertir las
+ *   rutas relativas ("/opengraph-image") en direcciones completas. Sin esto,
+ *   la imagen para WhatsApp saldría con una dirección que WhatsApp no puede
+ *   abrir.
+ * - `title`: la marca va PRIMERO. Cuando alguien busca "wiedmer", Google
+ *   privilegia las páginas cuyo título arranca con ese nombre.
+ * - `openGraph`: el "protocolo de tarjeta" que leen WhatsApp, Facebook,
+ *   LinkedIn o Telegram para armar la vista previa del link (imagen, título y
+ *   descripción). La imagen sale de `src/app/opengraph-image.tsx`.
+ * - `robots`: permitir indexar. Las páginas privadas (login, carrito, panel)
+ *   se excluyen aparte, en `robots.ts` y en su propio metadata.
+ */
+const TITULO = "Wiedmer | Mayorista de pinturería y ferretería en Rosario";
+const DESCRIPCION =
+  "Wiedmer, importador y distribuidor mayorista para pinturerías y ferreterías en Rosario: pinturas, aerosoles, rodillos, lijas e impermeabilizantes.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
   title: {
-    default: "Wiedmer — Distribuidor mayorista de pinturería y ferretería",
+    default: TITULO,
     template: "%s | Wiedmer",
   },
-  description:
-    "Importador y distribuidor mayorista de artículos para pinturerías y ferreterías en Rosario. Pinturas, aerosoles, rodillos, lijas e impermeabilizantes.",
+  description: DESCRIPCION,
+  applicationName: "Wiedmer",
+  keywords: [
+    "Wiedmer",
+    "Wiedmer mayorista",
+    "distribuidor mayorista pinturería",
+    "mayorista ferretería Rosario",
+    "pinturas por mayor",
+    "aerosoles",
+    "rodillos",
+    "Sinteplast",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "Wiedmer",
+    locale: "es_AR",
+    title: TITULO,
+    description: DESCRIPCION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description: DESCRIPCION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

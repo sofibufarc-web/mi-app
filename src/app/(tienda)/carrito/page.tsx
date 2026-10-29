@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CartView } from "@/components/cart-view";
 import { getT } from "@/lib/request-context";
 
-export const metadata = { title: "Carrito" };
+export const metadata = { title: "Carrito", robots: { index: false } };
 
 /**
  * El acceso ya está controlado por `src/proxy.ts`: /carrito exige sesión, así

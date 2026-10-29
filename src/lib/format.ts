@@ -42,3 +42,12 @@ export function formatDate(iso: string): string {
     year: "numeric",
   }).format(date);
 }
+
+/**
+ * El número de pedido como se le muestra a la gente: 12 → "0012".
+ * Lo ven el cliente (en el mensaje de WhatsApp) y el panel, para poder cruzar
+ * un mensaje con el registro del pedido.
+ */
+export function formatOrderNumber(id: number): string {
+  return String(id).padStart(4, "0");
+}

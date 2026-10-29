@@ -11,6 +11,8 @@ export type MenuCategory = {
   image?: string;
   count: number;
   brands: string[];
+  /** Subcategorías (Doble A → Lijas, Cintas, Varios). Si hay, el panel las muestra en vez de las marcas. */
+  subcategories?: { name: string; slug: string; count: number }[];
 };
 
 /**
@@ -118,7 +120,18 @@ export function MegaMenu({
                 {activa.count} {productsLabel}
               </p>
               <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1">
-                {activa.brands.map((b) => (
+                {activa.subcategories?.map((h) => (
+                  <li key={h.slug}>
+                    <Link
+                      href={`/categoria/${h.slug}`}
+                      onClick={() => setAbierta(null)}
+                      className="inline-block py-1 text-sm font-semibold text-ink transition hover:translate-x-1 hover:text-brand"
+                    >
+                      {h.name} <span className="font-normal text-ink-soft">({h.count})</span>
+                    </Link>
+                  </li>
+                ))}
+                {!activa.subcategories?.length && activa.brands.map((b) => (
                   <li key={b}>
                     <Link
                       href={`/categoria/${activa.slug}?brand=${encodeURIComponent(b)}`}
